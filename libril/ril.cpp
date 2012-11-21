@@ -691,6 +691,7 @@ invalid:
 /**
  * Callee expects const RIL_SIM_IO *
  * Payload is:
+ *   int32_t cla
  *   int32_t command
  *   int32_t fileid
  *   String path
@@ -713,6 +714,12 @@ dispatchSIM_IO (Parcel &p, RequestInfo *pRI) {
     memset (&simIO, 0, sizeof(simIO));
 
     // note we only check status at the end
+
+    simIO.v6.cla = 0;
+    if (pRI->pCI->requestNumber != RIL_REQUEST_SIM_IO) {
+        status = p.readInt32(&t);
+        simIO.v6.cla = (int)t;
+    }
 
     status = p.readInt32(&t);
     simIO.v6.command = (int)t;
@@ -3525,6 +3532,10 @@ requestToString(int request) {
         case RIL_REQUEST_SEND_SMS_EXPECT_MORE: return "SEND_SMS_EXPECT_MORE";
         case RIL_REQUEST_SETUP_DATA_CALL: return "SETUP_DATA_CALL";
         case RIL_REQUEST_SIM_IO: return "SIM_IO";
+        case RIL_REQUEST_SIM_TRANSMIT_BASIC: return "SIM_TRANSMIT_BASIC";
+        case RIL_REQUEST_SIM_OPEN_CHANNEL: return "SIM_OPEN_CHANNEL";
+        case RIL_REQUEST_SIM_CLOSE_CHANNEL: return "SIM_CLOSE_CHANNEL";
+        case RIL_REQUEST_SIM_TRANSMIT_CHANNEL: return "SIM_TRANSMIT_CHANNEL";
         case RIL_REQUEST_SEND_USSD: return "SEND_USSD";
         case RIL_REQUEST_CANCEL_USSD: return "CANCEL_USSD";
         case RIL_REQUEST_GET_CLIR: return "GET_CLIR";
