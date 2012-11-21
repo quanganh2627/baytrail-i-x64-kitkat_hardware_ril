@@ -63,6 +63,8 @@ typedef enum {
     RIL_E_MISSING_RESOURCE = 17,
     RIL_E_NO_SUCH_ELEMENT = 18,
 
+    RIL_E_INVALID_PARAMETER = 19                /* SEEK for Android */
+
 } RIL_Errno;
 
 typedef enum {
@@ -273,6 +275,7 @@ typedef struct {
 } RIL_Dial;
 
 typedef struct {
+    int cla;
     int command;    /* one of the commands listed for TS 27.007 +CRSM*/
     int fileid;     /* EF id */
     char *path;     /* "pathid" from TS 27.007 +CRSM command.
@@ -287,6 +290,7 @@ typedef struct {
 } RIL_SIM_IO_v5;
 
 typedef struct {
+    int cla;
     int command;    /* one of the commands listed for TS 27.007 +CRSM*/
     int fileid;     /* EF id */
     char *path;     /* "pathid" from TS 27.007 +CRSM command.
@@ -3328,6 +3332,22 @@ typedef struct {
  *  GENERIC_FAILURE
  */
 #define RIL_REQUEST_VOICE_RADIO_TECH 108
+
+// "data" is a const RIL_SIM_IO *
+// "response" is a const RIL_SIM_IO_Response *
+#define RIL_REQUEST_SIM_TRANSMIT_BASIC 109
+
+// "data" is a const char * containing the AID of the applet
+// "response" is a int * containing the channel id
+#define RIL_REQUEST_SIM_OPEN_CHANNEL 110
+
+// "data" is a const int * containing the channel id
+// "response" is NULL
+#define RIL_REQUEST_SIM_CLOSE_CHANNEL 111
+
+// "data" is a const RIL_SIM_IO *
+// "response" is a const RIL_SIM_IO_Response *
+#define RIL_REQUEST_SIM_TRANSMIT_CHANNEL 112
 
 /***********************************************************************/
 
