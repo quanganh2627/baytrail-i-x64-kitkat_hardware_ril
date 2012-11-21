@@ -34,6 +34,8 @@ extern "C" {
 #define CDMA_ALPHA_INFO_BUFFER_LENGTH 64
 #define CDMA_NUMBER_INFO_BUFFER_LENGTH 81
 
+#define RIL_SOCKET_NAME_MAX_LENGTH 6
+
 typedef void * RIL_Token;
 
 typedef enum {
@@ -57,8 +59,12 @@ typedef enum {
                                                    location */
     RIL_E_MODE_NOT_SUPPORTED = 13,              /* HW does not support preferred network type */
     RIL_E_FDN_CHECK_FAILURE = 14,               /* command failed because recipient is not on FDN list */
-    RIL_E_ILLEGAL_SIM_OR_ME = 15                /* network selection failed due to
+    RIL_E_ILLEGAL_SIM_OR_ME = 15,                /* network selection failed due to
                                                    illegal SIM or ME */
+    RIL_E_NETWORK_PUK_REQUIRED = 16,            /* Network Personalisation PUK required */
+    RIL_E_MISSING_RESOURCE = 17,
+    RIL_E_NO_SUCH_ELEMENT = 18,
+
 } RIL_Errno;
 
 typedef enum {
@@ -371,7 +377,11 @@ typedef enum {
     CALL_FAIL_NORMAL = 16,
     CALL_FAIL_BUSY = 17,
     CALL_FAIL_CONGESTION = 34,
+    CALL_FAIL_RESSOURCES_UNAVAILABLE = 47,
+    CALL_FAIL_BEARER_CAPABILITY_NOT_AUTHORIZED = 57,
+    CALL_FAIL_BEARER_CAPABILITY_NOT_AVAILABLE = 58,
     CALL_FAIL_ACM_LIMIT_EXCEEDED = 68,
+    CALL_FAIL_INCOMPATIBLE_DESTINATION = 88,
     CALL_FAIL_CALL_BARRED = 240,
     CALL_FAIL_FDN_BLOCKED = 241,
     CALL_FAIL_IMSI_UNKNOWN_IN_VLR = 242,
@@ -438,6 +448,12 @@ typedef enum {
 typedef enum {
     RIL_DATA_PROFILE_DEFAULT    = 0,
     RIL_DATA_PROFILE_TETHERED   = 1,
+    RIL_DATA_PROFILE_IMS        = 2,
+    RIL_DATA_PROFILE_FOTA       = 3,
+    RIL_DATA_PROFILE_CBS        = 4,
+    RIL_DATA_PROFILE_MMS        = 5,
+    RIL_DATA_PROFILE_SUPL       = 6,
+    RIL_DATA_PROFILE_HIPRI      = 7,
     RIL_DATA_PROFILE_OEM_BASE   = 1000    /* Start of OEM-specific profiles */
 } RIL_DataProfile;
 
@@ -4210,6 +4226,7 @@ const RIL_RadioFunctions *RIL_Init(const struct RIL_Env *env, int argc, char **a
  */
 void RIL_register (const RIL_RadioFunctions *callbacks);
 
+char gs_rilSocketName[RIL_SOCKET_NAME_MAX_LENGTH];
 
 /**
  *
