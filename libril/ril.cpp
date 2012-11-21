@@ -2989,7 +2989,9 @@ RIL_register (const RIL_RadioFunctions *callbacks) {
     s_fdListen = ret;
 
 #else
-    s_fdListen = android_get_control_socket(SOCKET_NAME_RIL);
+    //s_fdListen = android_get_control_socket(SOCKET_NAME_RIL);
+    s_fdListen = android_get_control_socket(gs_rilSocketName);
+    ALOGD("Gettting socket '%s", gs_rilSocketName);
     if (s_fdListen < 0) {
         RLOGE("Failed to get socket '" SOCKET_NAME_RIL "'");
         exit(-1);
