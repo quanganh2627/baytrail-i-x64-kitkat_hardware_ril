@@ -283,7 +283,7 @@ OpenLib:
     funcs = rilInit(&s_rilEnv, argc, rilArgv);
 
     RIL_register(funcs);
-
+    signal(SIGPIPE, SIG_IGN);
 done:
 
     while(1) {
