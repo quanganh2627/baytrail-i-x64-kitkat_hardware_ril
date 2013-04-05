@@ -1322,7 +1322,7 @@ blockingWrite(int fd, const void *buffer, size_t len) {
         do {
             written = write (fd, toWrite + writeOffset,
                                 len - writeOffset);
-        } while (written < 0 && errno == EINTR && errno != EPIPE);
+        } while (written < 0 && errno == EINTR);
 
         if (written >= 0) {
             writeOffset += written;
