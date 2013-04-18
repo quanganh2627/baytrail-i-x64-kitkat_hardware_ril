@@ -3493,6 +3493,13 @@ requestToString(int request) {
         case RIL_UNSOL_EXIT_EMERGENCY_CALLBACK_MODE: return "UNSOL_EXIT_EMERGENCY_CALLBACK_MODE";
         case RIL_UNSOL_RIL_CONNECTED: return "UNSOL_RIL_CONNECTED";
         case RIL_UNSOL_VOICE_RADIO_TECH_CHANGED: return "UNSOL_VOICE_RADIO_TECH_CHANGED";
+#if defined(M2_VT_FEATURE_ENABLED)
+        case RIL_REQUEST_HANGUP_VT: return "HANGUP_VT";
+        case RIL_REQUEST_DIAL_VT: return "DIAL_VT";
+#endif
+#if defined(M2_GET_SIM_SMS_STORAGE_ENABLED)
+        case RIL_REQUEST_GET_SIM_SMS_STORAGE: return "RIL_REQUEST_GET_SIM_SMS_STORAGE";
+#endif
         default: return "<unknown request>";
     }
 }
