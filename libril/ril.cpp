@@ -2199,6 +2199,29 @@ static void sendSimStatusAppInfo(Parcel &p, int num_apps, RIL_AppStatus appStatu
             p.writeInt32(appStatus[i].pin1_replaced);
             p.writeInt32(appStatus[i].pin1);
             p.writeInt32(appStatus[i].pin2);
+#if defined(M2_PIN_RETRIES_FEATURE_ENABLED)
+            p.writeInt32(appStatus[i].pin1_num_retries);
+            p.writeInt32(appStatus[i].puk1_num_retries);
+            p.writeInt32(appStatus[i].pin2_num_retries);
+            p.writeInt32(appStatus[i].puk2_num_retries);
+            appendPrintBuf("%s[app_type=%d,app_state=%d,perso_substate=%d,\
+                    aid_ptr=%s,app_label_ptr=%s,pin1_replaced=%d,pin1=%d,pin2=%d,\
+                    pin1_num_retries=%d,puk1_num_retries=%d,pin2_num_retries=%d,\
+                    puk2_num_retries=%d],",
+                    printBuf,
+                    appStatus[i].app_type,
+                    appStatus[i].app_state,
+                    appStatus[i].perso_substate,
+                    appStatus[i].aid_ptr,
+                    appStatus[i].app_label_ptr,
+                    appStatus[i].pin1_replaced,
+                    appStatus[i].pin1,
+                    appStatus[i].pin2,
+                    appStatus[i].pin1_num_retries,
+                    appStatus[i].puk1_num_retries,
+                    appStatus[i].pin2_num_retries,
+                    appStatus[i].puk2_num_retries);
+#else
             appendPrintBuf("%s[app_type=%d,app_state=%d,perso_substate=%d,\
                     aid_ptr=%s,app_label_ptr=%s,pin1_replaced=%d,pin1=%d,pin2=%d],",
                     printBuf,
@@ -2210,6 +2233,7 @@ static void sendSimStatusAppInfo(Parcel &p, int num_apps, RIL_AppStatus appStatu
                     appStatus[i].pin1_replaced,
                     appStatus[i].pin1,
                     appStatus[i].pin2);
+#endif // M2_PIN_RETRIES_FEATURE_ENABLED
         }
         closeResponse;
 }
