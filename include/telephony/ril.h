@@ -94,6 +94,12 @@ typedef enum {
 } RIL_RadioState;
 
 typedef enum {
+    RIL_RADIO_OFF_REASON_NONE = 0,
+    RIL_RADIO_OFF_REASON_SHUTDOWN = 1,
+    RIL_RADIO_OFF_REASON_AIRPLANE_MODE = 2
+} RIL_Radio_Off_Reason;
+
+typedef enum {
     RADIO_TECH_UNKNOWN = 0,
     RADIO_TECH_GPRS = 1,
     RADIO_TECH_EDGE = 2,
@@ -1448,6 +1454,7 @@ typedef struct {
  * "data" is int *
  * ((int *)data)[0] is > 0 for "Radio On"
  * ((int *)data)[0] is == 0 for "Radio Off"
+ * ((int *)data)[1] if data[0] is 0, data[1] is a RIL_Radio_Off_Reason.
  *
  * "response" is NULL
  *
