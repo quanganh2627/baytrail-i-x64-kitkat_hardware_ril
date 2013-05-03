@@ -127,3 +127,19 @@
     {RIL_REQUEST_SIM_OPEN_CHANNEL, dispatchString, responseInts},
     {RIL_REQUEST_SIM_CLOSE_CHANNEL, dispatchInts, responseVoid},
     {RIL_REQUEST_SIM_TRANSMIT_CHANNEL, dispatchSIM_IO, responseSIM_IO}
+#if defined(M2_VT_FEATURE_ENABLED)
+    ,
+    {RIL_REQUEST_HANGUP_VT, dispatchInts, responseVoid},
+    {RIL_REQUEST_DIAL_VT, dispatchDial, responseVoid}
+#else
+    ,
+    {0, NULL, NULL},
+    {0, NULL, NULL}
+#endif
+#if defined(M2_GET_SIM_SMS_STORAGE_ENABLED)
+    ,
+    {RIL_REQUEST_GET_SIM_SMS_STORAGE, dispatchVoid, responseInts}
+#else
+    ,
+    {0, NULL, NULL}
+#endif
