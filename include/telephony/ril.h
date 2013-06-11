@@ -30,6 +30,9 @@ extern "C" {
 #define RIL_VERSION 8     /* Current version */
 #define RIL_VERSION_MIN 6 /* Minimum RIL_VERSION supported */
 
+// LTE support in neighboring cell info
+#define RIL_NEIGH_CELLINFO_VERSION 2
+
 #define CDMA_ALPHA_INFO_BUFFER_LENGTH 64
 #define CDMA_NUMBER_INFO_BUFFER_LENGTH 81
 
@@ -166,6 +169,14 @@ typedef enum {
                                      convergence function */
     RIL_UUS_DCS_IA5c = 4          /* IA5 characters */
 } RIL_UUS_DCS;
+
+// Must be the same as CellInfo.TYPE_XXX
+typedef enum {
+    RIL_CELL_INFO_TYPE_GSM = 1,
+    RIL_CELL_INFO_TYPE_CDMA = 2,
+    RIL_CELL_INFO_TYPE_LTE = 3,
+    RIL_CELL_INFO_TYPE_WCDMA = 4,
+} RIL_CellInfoType;
 
 /* User-to-User Signaling Information defined in 3GPP 23.087 v8.0
  * This data is passed in RIL_ExtensionRecord and rec contains this
@@ -345,18 +356,46 @@ typedef struct {
     int             timeSeconds; /* for CF no reply only */
 }RIL_CallForwardInfo;
 
+/** RIL_CellIdentityGsm */
 typedef struct {
-   char * cid;         /* Combination of LAC and Cell Id in 32 bits in GSM.
-                        * Upper 16 bits is LAC and lower 16 bits
-                        * is CID (as described in TS 27.005)
-                        * Primary Scrambling Code (as described in TS 25.331)
-                        *         in 9 bits in UMTS
-                        * Valid values are hexadecimal 0x0000 - 0xffffffff.
-                        */
-   int    rssi;        /* Received RSSI in GSM,
-                        * Level index of CPICH Received Signal Code Power in UMTS
-                        */
-} RIL_NeighboringCell;
+    int mcc; /* 3-digit Mobile Country Code, 0..999, INT_MAX if unknown */
+    int mnc; /* 2 or 3-digit Mobile Network Code, 0..999, INT_MAX if unknown */
+    int lac; /* 16-bit Location Area Code, 0..65535, INT_MAX if unknown */
+    int cid; /* 16-bit GSM Cell Identity described in TS 27.007, 0..65535, INT_MAX if unknown */
+} RIL_CellIdentityGsm;
+
+/** RIL_CellIdentityWcdma */
+typedef struct {
+    int mcc; /* 3-digit Mobile Country Code, 0..999, INT_MAX if unknown */
+    int mnc; /* 2 or 3-digit Mobile Network Code, 0..999, INT_MAX if unknown */
+    int lac; /* 16-bit Location Area Code, 0..65535, INT_MAX if unknown */
+    int cid; /* 28-bit UMTS Cell Identity described in TS 25.331, 0..268435455, INT_MAX if unknown */
+    int psc; /* 9-bit UMTS Primary Scrambling Code described in TS 25.331, 0..511, INT_MAX if unknown */
+} RIL_CellIdentityWcdma;
+
+/** RIL_CellIdentityLte */
+typedef struct {
+    int mcc; /* 3-digit Mobile Country Code, 0..999, INT_MAX if unknown */
+    int mnc; /* 2 or 3-digit Mobile Network Code, 0..999, INT_MAX if unknown */
+    int cid; /* 28-bit Cell Identity described in TS 36.331, INT_MAX if unknown */
+    int pcid; /* physical cell id 0..503, INT_MAX if unknown */
+    int tac; /* 16-bit tracking area code, INT_MAX if unknown */
+} RIL_CellIdentityLte;
+
+/** RIL_CellIdentityCdma */
+typedef struct {
+    int networkId; /* Network Id 0..65535, INT_MAX if unknown */
+    int systemId; /* CDMA System Id 0..32767, INT_MAX if unknown */
+    int basestationId; /* Base Station Id 0..65535, INT_MAX if unknown */
+    int longitude; /* Longitude is a decimal number as specified in 3GPP2 C.S0005-A v6.0.
+    * It is represented in units of 0.25 seconds and ranges from -2592000
+    * to 2592000, both values inclusive (corresponding to a range of -180
+    * to +180 degrees). INT_MAX if unknown */
+    int latitude; /* Latitude is a decimal number as specified in 3GPP2 C.S0005-A v6.0.
+    * It is represented in units of 0.25 seconds and ranges from -1296000
+    * to 1296000, both values inclusive (corresponding to a range of -90
+    * to +90 degrees). INT_MAX if unknown */
+} RIL_CellIdentityCdma;
 
 /* See RIL_REQUEST_LAST_CALL_FAIL_CAUSE */
 typedef enum {
@@ -717,6 +756,12 @@ typedef struct {
                           * Range: 0 to 15.
                           * INT_MAX : 0x7FFFFFFF denotes invalid value.
                           * Reference: 3GPP TS 36.101 9.2, 9.3, A.4 */
+    int timingAdvance;   /* timing advance in micro seconds for a one way trip from cell to
+                          *  device.
+                          * Approximate distance can be calculated using 300m/us * timingAdvance.
+                          * Range: 0 to 0x7FFFFFFE
+                          * INT_MAX : 0x7FFFFFFF denotes invalid value.
+                          * Reference: 3GPP 36.321 section 6.1.3.5 */
 } RIL_LTE_SignalStrength;
 
 typedef struct {
@@ -766,48 +811,6 @@ typedef struct {
     RIL_LTE_SignalStrength_v8   LTE_SignalStrength;
 } RIL_SignalStrength_v8;
 
-/** RIL_CellIdentityGsm */
-typedef struct {
-    int mcc;    /* 3-digit Mobile Country Code, 0..999, INT_MAX if unknown */
-    int mnc;    /* 2 or 3-digit Mobile Network Code, 0..999, INT_MAX if unknown */
-    int lac;    /* 16-bit Location Area Code, 0..65535, INT_MAX if unknown  */
-    int cid;    /* 16-bit GSM Cell Identity described in TS 27.007, 0..65535, INT_MAX if unknown  */
-} RIL_CellIdentityGsm;
-
-/** RIL_CellIdentityWcdma */
-typedef struct {
-    int mcc;    /* 3-digit Mobile Country Code, 0..999, INT_MAX if unknown  */
-    int mnc;    /* 2 or 3-digit Mobile Network Code, 0..999, INT_MAX if unknown  */
-    int lac;    /* 16-bit Location Area Code, 0..65535, INT_MAX if unknown  */
-    int cid;    /* 28-bit UMTS Cell Identity described in TS 25.331, 0..268435455, INT_MAX if unknown  */
-    int psc;    /* 9-bit UMTS Primary Scrambling Code described in TS 25.331, 0..511, INT_MAX if unknown */
-} RIL_CellIdentityWcdma;
-
-/** RIL_CellIdentityCdma */
-typedef struct {
-    int networkId;      /* Network Id 0..65535, INT_MAX if unknown */
-    int systemId;       /* CDMA System Id 0..32767, INT_MAX if unknown  */
-    int basestationId;  /* Base Station Id 0..65535, INT_MAX if unknown  */
-    int longitude;      /* Longitude is a decimal number as specified in 3GPP2 C.S0005-A v6.0.
-                         * It is represented in units of 0.25 seconds and ranges from -2592000
-                         * to 2592000, both values inclusive (corresponding to a range of -180
-                         * to +180 degrees). INT_MAX if unknown */
-
-    int latitude;       /* Latitude is a decimal number as specified in 3GPP2 C.S0005-A v6.0.
-                         * It is represented in units of 0.25 seconds and ranges from -1296000
-                         * to 1296000, both values inclusive (corresponding to a range of -90
-                         * to +90 degrees). INT_MAX if unknown */
-} RIL_CellIdentityCdma;
-
-/** RIL_CellIdentityLte */
-typedef struct {
-    int mcc;    /* 3-digit Mobile Country Code, 0..999, INT_MAX if unknown  */
-    int mnc;    /* 2 or 3-digit Mobile Network Code, 0..999, INT_MAX if unknown  */
-    int ci;     /* 28-bit Cell Identity described in TS ???, INT_MAX if unknown */
-    int pci;    /* physical cell id 0..503, INT_MAX if unknown  */
-    int tac;    /* 16-bit tracking area code, INT_MAX if unknown  */
-} RIL_CellIdentityLte;
-
 /** RIL_CellInfoGsm */
 typedef struct {
   RIL_CellIdentityGsm   cellIdentityGsm;
@@ -833,14 +836,6 @@ typedef struct {
   RIL_LTE_SignalStrength_v8  signalStrengthLte;
 } RIL_CellInfoLte;
 
-// Must be the same as CellInfo.TYPE_XXX
-typedef enum {
-  RIL_CELL_INFO_TYPE_GSM    = 1,
-  RIL_CELL_INFO_TYPE_CDMA   = 2,
-  RIL_CELL_INFO_TYPE_LTE    = 3,
-  RIL_CELL_INFO_TYPE_WCDMA  = 4,
-} RIL_CellInfoType;
-
 // Must be the same as CellInfo.TIMESTAMP_TYPE_XXX
 typedef enum {
     RIL_TIMESTAMP_TYPE_UNKNOWN = 0,
@@ -862,6 +857,32 @@ typedef struct {
     RIL_CellInfoWcdma   wcdma;
   } CellInfo;
 } RIL_CellInfo;
+
+typedef struct {
+   char * cid;         /* Combination of LAC and Cell Id in 32 bits in GSM.
+                        * Upper 16 bits is LAC and lower 16 bits
+                        * is CID (as described in TS 27.005)
+                        * Primary Scrambling Code (as described in TS 25.331)
+                        *         in 9 bits in UMTS
+                        * Valid values are hexadecimal 0x0000 - 0xffffffff.
+                        */
+
+   int    rssi;        /* Received RSSI in GSM,
+                        * Level index of CPICH Received Signal Code Power in UMTS
+                        */
+   /* The following are part of extended Neighbouring cell information
+    * supporting LTE. Support controlled  with RIL_NEIGH_CELLINFO_VERSION
+    */
+   RIL_CellInfoType cellInfoType; /* cell type for selecting from union CellInfo */
+   int isServingCell;
+   RIL_SignalStrength_v6 signalStrength;
+   union {
+       RIL_CellIdentityGsm gsm;
+       RIL_CellIdentityWcdma wcdma;
+       RIL_CellIdentityLte lte;
+       RIL_CellIdentityCdma cdma;
+   } CellIdentity;
+} RIL_NeighboringCell;
 
 /* Names of the CDMA info records (C.S0005 section 3.7.5) */
 typedef enum {
