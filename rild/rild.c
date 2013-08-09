@@ -284,6 +284,7 @@ OpenLib:
 
     RIL_register(funcs);
 
+    signal(SIGPIPE, SIG_IGN);
 done:
 
     while(1) {
