@@ -29,13 +29,8 @@ extern "C" {
 #define RIL_VERSION 7     /* Current version */
 #define RIL_VERSION_MIN 6 /* Minimum RIL_VERSION supported */
 
-// LTE support in neighboring cell info
-#define RIL_NEIGH_CELLINFO_VERSION 2
-
 #define CDMA_ALPHA_INFO_BUFFER_LENGTH 64
 #define CDMA_NUMBER_INFO_BUFFER_LENGTH 81
-
-#define RIL_SOCKET_NAME_MAX_LENGTH 6
 
 typedef void * RIL_Token;
 
@@ -60,14 +55,8 @@ typedef enum {
                                                    location */
     RIL_E_MODE_NOT_SUPPORTED = 13,              /* HW does not support preferred network type */
     RIL_E_FDN_CHECK_FAILURE = 14,               /* command failed because recipient is not on FDN list */
-    RIL_E_ILLEGAL_SIM_OR_ME = 15,                /* network selection failed due to
+    RIL_E_ILLEGAL_SIM_OR_ME = 15                /* network selection failed due to
                                                    illegal SIM or ME */
-    RIL_E_NETWORK_PUK_REQUIRED = 16,            /* Network Personalisation PUK required */
-    RIL_E_MISSING_RESOURCE = 17,
-    RIL_E_NO_SUCH_ELEMENT = 18,
-
-    RIL_E_INVALID_PARAMETER = 19                /* SEEK for Android */
-
 } RIL_Errno;
 
 typedef enum {
@@ -95,12 +84,6 @@ typedef enum {
     RADIO_STATE_NV_READY = 9,              /* Radio is on and the NV interface is available */
     RADIO_STATE_ON = 10                    /* Radio is on */
 } RIL_RadioState;
-
-typedef enum {
-    RIL_RADIO_OFF_REASON_NONE = 0,
-    RIL_RADIO_OFF_REASON_SHUTDOWN = 1,
-    RIL_RADIO_OFF_REASON_AIRPLANE_MODE = 2
-} RIL_Radio_Off_Reason;
 
 typedef enum {
     RADIO_TECH_UNKNOWN = 0,
@@ -136,8 +119,7 @@ typedef enum {
     PREF_NET_TYPE_LTE_CDMA_EVDO            = 8, /* LTE, CDMA and EvDo */
     PREF_NET_TYPE_LTE_GSM_WCDMA            = 9, /* LTE, GSM/WCDMA */
     PREF_NET_TYPE_LTE_CMDA_EVDO_GSM_WCDMA  = 10, /* LTE, CDMA, EvDo, GSM/WCDMA */
-    PREF_NET_TYPE_LTE_ONLY                 = 11, /* LTE only */
-    PREF_NET_TYPE_LTE_WCDMA                = 12  /* LTE/WCDMA (LTE preferred) */
+    PREF_NET_TYPE_LTE_ONLY                 = 11  /* LTE only */
 } RIL_PreferredNetworkType;
 
 /* Source for cdma subscription */
@@ -168,14 +150,6 @@ typedef enum {
                                      convergence function */
     RIL_UUS_DCS_IA5c = 4          /* IA5 characters */
 } RIL_UUS_DCS;
-
-// Must be the same as CellInfo.TYPE_XXX
-typedef enum {
-    RIL_CELL_INFO_TYPE_GSM = 1,
-    RIL_CELL_INFO_TYPE_CDMA = 2,
-    RIL_CELL_INFO_TYPE_LTE = 3,
-    RIL_CELL_INFO_TYPE_WCDMA = 4,
-} RIL_CellInfoType;
 
 /* User-to-User Signaling Information defined in 3GPP 23.087 v8.0
  * This data is passed in RIL_ExtensionRecord and rec contains this
@@ -293,7 +267,6 @@ typedef struct {
 } RIL_Dial;
 
 typedef struct {
-    int cla;
     int command;    /* one of the commands listed for TS 27.007 +CRSM*/
     int fileid;     /* EF id */
     char *path;     /* "pathid" from TS 27.007 +CRSM command.
@@ -308,7 +281,6 @@ typedef struct {
 } RIL_SIM_IO_v5;
 
 typedef struct {
-    int cla;
     int command;    /* one of the commands listed for TS 27.007 +CRSM*/
     int fileid;     /* EF id */
     char *path;     /* "pathid" from TS 27.007 +CRSM command.
@@ -355,46 +327,18 @@ typedef struct {
     int             timeSeconds; /* for CF no reply only */
 }RIL_CallForwardInfo;
 
-/** RIL_CellIdentityGsm */
 typedef struct {
-    int mcc; /* 3-digit Mobile Country Code, 0..999, INT_MAX if unknown */
-    int mnc; /* 2 or 3-digit Mobile Network Code, 0..999, INT_MAX if unknown */
-    int lac; /* 16-bit Location Area Code, 0..65535, INT_MAX if unknown */
-    int cid; /* 16-bit GSM Cell Identity described in TS 27.007, 0..65535, INT_MAX if unknown */
-} RIL_CellIdentityGsm;
-
-/** RIL_CellIdentityWcdma */
-typedef struct {
-    int mcc; /* 3-digit Mobile Country Code, 0..999, INT_MAX if unknown */
-    int mnc; /* 2 or 3-digit Mobile Network Code, 0..999, INT_MAX if unknown */
-    int lac; /* 16-bit Location Area Code, 0..65535, INT_MAX if unknown */
-    int cid; /* 28-bit UMTS Cell Identity described in TS 25.331, 0..268435455, INT_MAX if unknown */
-    int psc; /* 9-bit UMTS Primary Scrambling Code described in TS 25.331, 0..511, INT_MAX if unknown */
-} RIL_CellIdentityWcdma;
-
-/** RIL_CellIdentityLte */
-typedef struct {
-    int mcc; /* 3-digit Mobile Country Code, 0..999, INT_MAX if unknown */
-    int mnc; /* 2 or 3-digit Mobile Network Code, 0..999, INT_MAX if unknown */
-    int cid; /* 28-bit Cell Identity described in TS 36.331, INT_MAX if unknown */
-    int pcid; /* physical cell id 0..503, INT_MAX if unknown */
-    int tac; /* 16-bit tracking area code, INT_MAX if unknown */
-} RIL_CellIdentityLte;
-
-/** RIL_CellIdentityCdma */
-typedef struct {
-    int networkId; /* Network Id 0..65535, INT_MAX if unknown */
-    int systemId; /* CDMA System Id 0..32767, INT_MAX if unknown */
-    int basestationId; /* Base Station Id 0..65535, INT_MAX if unknown */
-    int longitude; /* Longitude is a decimal number as specified in 3GPP2 C.S0005-A v6.0.
-    * It is represented in units of 0.25 seconds and ranges from -2592000
-    * to 2592000, both values inclusive (corresponding to a range of -180
-    * to +180 degrees). INT_MAX if unknown */
-    int latitude; /* Latitude is a decimal number as specified in 3GPP2 C.S0005-A v6.0.
-    * It is represented in units of 0.25 seconds and ranges from -1296000
-    * to 1296000, both values inclusive (corresponding to a range of -90
-    * to +90 degrees). INT_MAX if unknown */
-} RIL_CellIdentityCdma;
+   char * cid;         /* Combination of LAC and Cell Id in 32 bits in GSM.
+                        * Upper 16 bits is LAC and lower 16 bits
+                        * is CID (as described in TS 27.005)
+                        * Primary Scrambling Code (as described in TS 25.331)
+                        *         in 9 bits in UMTS
+                        * Valid values are hexadecimal 0x0000 - 0xffffffff.
+                        */
+   int    rssi;        /* Received RSSI in GSM,
+                        * Level index of CPICH Received Signal Code Power in UMTS
+                        */
+} RIL_NeighboringCell;
 
 /* See RIL_REQUEST_LAST_CALL_FAIL_CAUSE */
 typedef enum {
@@ -402,11 +346,7 @@ typedef enum {
     CALL_FAIL_NORMAL = 16,
     CALL_FAIL_BUSY = 17,
     CALL_FAIL_CONGESTION = 34,
-    CALL_FAIL_RESSOURCES_UNAVAILABLE = 47,
-    CALL_FAIL_BEARER_CAPABILITY_NOT_AUTHORIZED = 57,
-    CALL_FAIL_BEARER_CAPABILITY_NOT_AVAILABLE = 58,
     CALL_FAIL_ACM_LIMIT_EXCEEDED = 68,
-    CALL_FAIL_INCOMPATIBLE_DESTINATION = 88,
     CALL_FAIL_CALL_BARRED = 240,
     CALL_FAIL_FDN_BLOCKED = 241,
     CALL_FAIL_IMSI_UNKNOWN_IN_VLR = 242,
@@ -472,12 +412,6 @@ typedef enum {
 typedef enum {
     RIL_DATA_PROFILE_DEFAULT    = 0,
     RIL_DATA_PROFILE_TETHERED   = 1,
-    RIL_DATA_PROFILE_IMS        = 2,
-    RIL_DATA_PROFILE_FOTA       = 3,
-    RIL_DATA_PROFILE_CBS        = 4,
-    RIL_DATA_PROFILE_MMS        = 5,
-    RIL_DATA_PROFILE_SUPL       = 6,
-    RIL_DATA_PROFILE_HIPRI      = 7,
     RIL_DATA_PROFILE_OEM_BASE   = 1000    /* Start of OEM-specific profiles */
 } RIL_DataProfile;
 
@@ -574,12 +508,6 @@ typedef struct
   int              pin1_replaced;   /* applicable to USIM, CSIM & ISIM */
   RIL_PinState     pin1;
   RIL_PinState     pin2;
-#if defined(M2_PIN_RETRIES_FEATURE_ENABLED)
-  int pin1_num_retries;
-  int puk1_num_retries;
-  int pin2_num_retries;
-  int puk2_num_retries;
-#endif // M2_PIN_RETRIES_FEATURE_ENABLED
 } RIL_AppStatus;
 
 /* Deprecated, use RIL_CardStatus_v6 */
@@ -751,12 +679,6 @@ typedef struct {
                           * Range: 0 to 15.
                           * INT_MAX : 0x7FFFFFFF denotes invalid value.
                           * Reference: 3GPP TS 36.101 9.2, 9.3, A.4 */
-    int timingAdvance;   /* timing advance in micro seconds for a one way trip from cell to
-                          *  device.
-                          * Approximate distance can be calculated using 300m/us * timingAdvance.
-                          * Range: 0 to 0x7FFFFFFE
-                          * INT_MAX : 0x7FFFFFFF denotes invalid value.
-                          * Reference: 3GPP 36.321 section 6.1.3.5 */
 } RIL_LTE_SignalStrength;
 
 /* Deprecated, use RIL_SignalStrength_v6 */
@@ -772,32 +694,6 @@ typedef struct {
     RIL_EVDO_SignalStrength EVDO_SignalStrength;
     RIL_LTE_SignalStrength  LTE_SignalStrength;
 } RIL_SignalStrength_v6;
-
-typedef struct {
-   char * cid;         /* Combination of LAC and Cell Id in 32 bits in GSM.
-                        * Upper 16 bits is LAC and lower 16 bits
-                        * is CID (as described in TS 27.005)
-                        * Primary Scrambling Code (as described in TS 25.331)
-                        *         in 9 bits in UMTS
-                        * Valid values are hexadecimal 0x0000 - 0xffffffff.
-                        */
-
-   int    rssi;        /* Received RSSI in GSM,
-                        * Level index of CPICH Received Signal Code Power in UMTS
-                        */
-   /* The following are part of extended Neighbouring cell information
-    * supporting LTE. Support controlled  with RIL_NEIGH_CELLINFO_VERSION
-    */
-   RIL_CellInfoType cellInfoType; /* cell type for selecting from union CellInfo */
-   int isServingCell;
-   RIL_SignalStrength_v6 signalStrength;
-   union {
-       RIL_CellIdentityGsm gsm;
-       RIL_CellIdentityWcdma wcdma;
-       RIL_CellIdentityLte lte;
-       RIL_CellIdentityCdma cdma;
-   } CellIdentity;
-} RIL_NeighboringCell;
 
 /* Names of the CDMA info records (C.S0005 section 3.7.5) */
 typedef enum {
@@ -1525,7 +1421,6 @@ typedef struct {
  * "data" is int *
  * ((int *)data)[0] is > 0 for "Radio On"
  * ((int *)data)[0] is == 0 for "Radio Off"
- * ((int *)data)[1] if data[0] is 0, data[1] is a RIL_Radio_Off_Reason.
  *
  * "response" is NULL
  *
@@ -3418,83 +3313,6 @@ typedef struct {
  */
 #define RIL_REQUEST_VOICE_RADIO_TECH 108
 
-// "data" is a const RIL_SIM_IO *
-// "response" is a const RIL_SIM_IO_Response *
-#define RIL_REQUEST_SIM_TRANSMIT_BASIC 109
-
-// "data" is a const char * containing the AID of the applet
-// "response" is a int * containing the channel id
-#define RIL_REQUEST_SIM_OPEN_CHANNEL 110
-
-// "data" is a const int * containing the channel id
-// "response" is NULL
-#define RIL_REQUEST_SIM_CLOSE_CHANNEL 111
-
-// "data" is a const RIL_SIM_IO *
-// "response" is a const RIL_SIM_IO_Response *
-#define RIL_REQUEST_SIM_TRANSMIT_CHANNEL 112
-
-#if defined(M2_VT_FEATURE_ENABLED)
-
-/**
- * RIL_REQUEST_HANGUP_VT
- *
- * Hang-up the current GSM/UMTS call of the MT, and set the cause.
- * It can be used when the user would like to fall back an
- * incoming VT call to VOICE call.
- *
- * "data" is int *
- * ((int *)data)[0] is cause value
- *
- * "response" is NULL
- *
- * Valid errors:
- *  SUCCESS
- *  GENERIC_FAILURE
- *
- */
-#define RIL_REQUEST_HANGUP_VT 113
-
-/**
- * RIL_REQUEST_DIAL_VT
- *
- * Initiate VT call.
- *
- * "data" is const RIL_Dial *
- *
- * "response" is NULL
- *
- * Valid errors:
- *  SUCCESS
- *  RADIO_NOT_AVAILABLE (radio resetting)
- *  GENERIC_FAILURE
- *
- */
-#define RIL_REQUEST_DIAL_VT 114
-
-#endif  //(M2_VT_FEATURE_ENABLED)
-
-#if defined(M2_GET_SIM_SMS_STORAGE_ENABLED)
-
-/**
- * RIL_REQUEST_GET_SIM_SMS_STORAGE
- *
- * Get the current memory storage information of SMS message in SIM card.
- *
- * "data" is NULL
- *
- * "response" is const int *
- * ((const int *)response)[0] is current stored SIM SMS number
- * ((const int *)response)[1] is total SIM SMS number
- *
- * Valid errors:
- * SUCCESS, on success
- * RADIO_NOT_AVAILABLE (radio resetting)
- * GENERIC_FAILURE, if an error occurred
- */
-#define RIL_REQUEST_GET_SIM_SMS_STORAGE 115
-
-#endif // M2_GET_SIM_SMS_STORAGE_ENABLED
 
 /***********************************************************************/
 
@@ -3974,21 +3792,6 @@ typedef struct {
  */
 #define RIL_UNSOL_VOICE_RADIO_TECH_CHANGED 1035
 
-#if defined(M2_CALL_FAILED_CAUSE_FEATURE_ENABLED)
-
-/**
- * RIL_UNSOL_CALL_FAILED_CAUSE
- *
- * Call failed cause report.
- *
- * "data" is int *
- * ((int *)data)[0] is call id
- * ((int *)data)[1] is failed cause, refer to TS 24.008 Table 10.5.123
- */
-#define RIL_UNSOL_CALL_FAILED_CAUSE 1036
-
-
-#endif // (M2_CALL_FAILED_CAUSE_FEATURE_ENABLED)
 
 /***********************************************************************/
 
@@ -4118,7 +3921,6 @@ const RIL_RadioFunctions *RIL_Init(const struct RIL_Env *env, int argc, char **a
  */
 void RIL_register (const RIL_RadioFunctions *callbacks);
 
-char gs_rilSocketName[RIL_SOCKET_NAME_MAX_LENGTH];
 
 /**
  *

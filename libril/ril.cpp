@@ -689,7 +689,6 @@ invalid:
 /**
  * Callee expects const RIL_SIM_IO *
  * Payload is:
- *   int32_t cla
  *   int32_t command
  *   int32_t fileid
  *   String path
@@ -712,12 +711,6 @@ dispatchSIM_IO (Parcel &p, RequestInfo *pRI) {
     memset (&simIO, 0, sizeof(simIO));
 
     // note we only check status at the end
-
-    simIO.v6.cla = 0;
-    if (pRI->pCI->requestNumber != RIL_REQUEST_SIM_IO) {
-        status = p.readInt32(&t);
-        simIO.v6.cla = (int)t;
-    }
 
     status = p.readInt32(&t);
     simIO.v6.command = (int)t;
@@ -1322,7 +1315,7 @@ blockingWrite(int fd, const void *buffer, size_t len) {
         do {
             written = write (fd, toWrite + writeOffset,
                                 len - writeOffset);
-        } while (written < 0 && errno == EINTR && errno != EPIPE);
+        } while (written < 0 && errno == EINTR);
 
         if (written >= 0) {
             writeOffset += written;
@@ -1788,6 +1781,7 @@ static int responseSsn(Parcel &p, void *response, size_t responselen) {
 
 static int responseCellList(Parcel &p, void *response, size_t responselen) {
     int num;
+
     if (response == NULL && responselen != 0) {
         ALOGE("invalid response: NULL");
         return RIL_ERRNO_INVALID_RESPONSE;
@@ -1803,74 +1797,15 @@ static int responseCellList(Parcel &p, void *response, size_t responselen) {
     /* number of records */
     num = responselen / sizeof(RIL_NeighboringCell *);
     p.writeInt32(num);
-    p.writeInt32(RIL_NEIGH_CELLINFO_VERSION);
+
     for (int i = 0 ; i < num ; i++) {
         RIL_NeighboringCell *p_cur = ((RIL_NeighboringCell **) response)[i];
-        if (RIL_NEIGH_CELLINFO_VERSION == 1) {
-            p.writeInt32(RIL_NEIGH_CELLINFO_VERSION);
-            p.writeInt32(p_cur->rssi);
-            writeStringToParcel (p, p_cur->cid);
-            appendPrintBuf("%s[cid=%s,rssi=%d],", printBuf,
-                    p_cur->cid, p_cur->rssi);
-        } else {
-            p.writeInt32(RIL_NEIGH_CELLINFO_VERSION);
-            p.writeInt32(p_cur->cellInfoType);
-            p.writeInt32(p_cur->isServingCell);
-            switch (p_cur->cellInfoType) {
-                case RIL_CELL_INFO_TYPE_GSM:
-                    p.writeInt32(p_cur->signalStrength.GW_SignalStrength.signalStrength);
-                    p.writeInt32(p_cur->signalStrength.GW_SignalStrength.bitErrorRate);
-                    if (p_cur->isServingCell) {
-                        p.writeInt32(p_cur->CellIdentity.gsm.mcc);
-                        p.writeInt32(p_cur->CellIdentity.gsm.mnc);
-                    } else {
-                        p.writeInt32(INT_MAX);
-                        p.writeInt32(INT_MAX);
-                    }
-                    p.writeInt32(p_cur->CellIdentity.gsm.lac);
-                    p.writeInt32(p_cur->CellIdentity.gsm.cid);
-                    // Dummy value for Psc as at Java side the same
-                    //  class is used for bot GSM and WCDMA
-                    p.writeInt32(INT_MAX);
-                break;
-                case RIL_CELL_INFO_TYPE_WCDMA:
-                    p.writeInt32(p_cur->signalStrength.GW_SignalStrength.signalStrength);
-                    p.writeInt32(p_cur->signalStrength.GW_SignalStrength.bitErrorRate);
-                    if (p_cur->isServingCell) {
-                        p.writeInt32(p_cur->CellIdentity.wcdma.mcc);
-                        p.writeInt32(p_cur->CellIdentity.wcdma.mnc);
-                    } else {
-                        p.writeInt32(INT_MAX);
-                        p.writeInt32(INT_MAX);
-                    }
-                    p.writeInt32(p_cur->CellIdentity.wcdma.lac);
-                    p.writeInt32(p_cur->CellIdentity.wcdma.cid);
-                    p.writeInt32(p_cur->CellIdentity.wcdma.psc);
-                break;
-                case RIL_CELL_INFO_TYPE_LTE:
-                    p.writeInt32(p_cur->signalStrength.LTE_SignalStrength.signalStrength);
-                    p.writeInt32(p_cur->signalStrength.LTE_SignalStrength.rsrp);
-                    p.writeInt32(p_cur->signalStrength.LTE_SignalStrength.rsrq);
-                    p.writeInt32(p_cur->signalStrength.LTE_SignalStrength.rssnr);
-                    p.writeInt32(p_cur->signalStrength.LTE_SignalStrength.cqi);
-                    p.writeInt32(p_cur->signalStrength.LTE_SignalStrength.timingAdvance);
-                    if (p_cur->isServingCell) {
-                        p.writeInt32(p_cur->CellIdentity.lte.mcc);
-                        p.writeInt32(p_cur->CellIdentity.lte.mnc);
-                    } else {
-                        p.writeInt32(INT_MAX);
-                        p.writeInt32(INT_MAX);
-                    }
-                    p.writeInt32(p_cur->CellIdentity.lte.cid);
-                    p.writeInt32(p_cur->CellIdentity.lte.pcid);
-                    p.writeInt32(p_cur->CellIdentity.lte.tac);
-                break;
-                default:
-                break;
-            }
-            appendPrintBuf("%s[type=%d],", printBuf,
-                    p_cur->cellInfoType);
-        }
+
+        p.writeInt32(p_cur->rssi);
+        writeStringToParcel (p, p_cur->cid);
+
+        appendPrintBuf("%s[cid=%s,rssi=%d],", printBuf,
+            p_cur->cid, p_cur->rssi);
     }
     removeLastChar;
     closeResponse;
@@ -2257,29 +2192,6 @@ static void sendSimStatusAppInfo(Parcel &p, int num_apps, RIL_AppStatus appStatu
             p.writeInt32(appStatus[i].pin1_replaced);
             p.writeInt32(appStatus[i].pin1);
             p.writeInt32(appStatus[i].pin2);
-#if defined(M2_PIN_RETRIES_FEATURE_ENABLED)
-            p.writeInt32(appStatus[i].pin1_num_retries);
-            p.writeInt32(appStatus[i].puk1_num_retries);
-            p.writeInt32(appStatus[i].pin2_num_retries);
-            p.writeInt32(appStatus[i].puk2_num_retries);
-            appendPrintBuf("%s[app_type=%d,app_state=%d,perso_substate=%d,\
-                    aid_ptr=%s,app_label_ptr=%s,pin1_replaced=%d,pin1=%d,pin2=%d,\
-                    pin1_num_retries=%d,puk1_num_retries=%d,pin2_num_retries=%d,\
-                    puk2_num_retries=%d],",
-                    printBuf,
-                    appStatus[i].app_type,
-                    appStatus[i].app_state,
-                    appStatus[i].perso_substate,
-                    appStatus[i].aid_ptr,
-                    appStatus[i].app_label_ptr,
-                    appStatus[i].pin1_replaced,
-                    appStatus[i].pin1,
-                    appStatus[i].pin2,
-                    appStatus[i].pin1_num_retries,
-                    appStatus[i].puk1_num_retries,
-                    appStatus[i].pin2_num_retries,
-                    appStatus[i].puk2_num_retries);
-#else
             appendPrintBuf("%s[app_type=%d,app_state=%d,perso_substate=%d,\
                     aid_ptr=%s,app_label_ptr=%s,pin1_replaced=%d,pin1=%d,pin2=%d],",
                     printBuf,
@@ -2291,7 +2203,6 @@ static void sendSimStatusAppInfo(Parcel &p, int num_apps, RIL_AppStatus appStatu
                     appStatus[i].pin1_replaced,
                     appStatus[i].pin1,
                     appStatus[i].pin2);
-#endif // M2_PIN_RETRIES_FEATURE_ENABLED
         }
         closeResponse;
 }
@@ -2924,11 +2835,9 @@ RIL_register (const RIL_RadioFunctions *callbacks) {
     s_fdListen = ret;
 
 #else
-    //s_fdListen = android_get_control_socket(SOCKET_NAME_RIL);
-    s_fdListen = android_get_control_socket(gs_rilSocketName);
-    ALOGD("Gettting socket '%s", gs_rilSocketName);
+    s_fdListen = android_get_control_socket(SOCKET_NAME_RIL);
     if (s_fdListen < 0) {
-        ALOGE("Failed to get socket '%s", gs_rilSocketName);
+        ALOGE("Failed to get socket '" SOCKET_NAME_RIL "'");
         exit(-1);
     }
 
@@ -3460,10 +3369,6 @@ requestToString(int request) {
         case RIL_REQUEST_SEND_SMS_EXPECT_MORE: return "SEND_SMS_EXPECT_MORE";
         case RIL_REQUEST_SETUP_DATA_CALL: return "SETUP_DATA_CALL";
         case RIL_REQUEST_SIM_IO: return "SIM_IO";
-        case RIL_REQUEST_SIM_TRANSMIT_BASIC: return "SIM_TRANSMIT_BASIC";
-        case RIL_REQUEST_SIM_OPEN_CHANNEL: return "SIM_OPEN_CHANNEL";
-        case RIL_REQUEST_SIM_CLOSE_CHANNEL: return "SIM_CLOSE_CHANNEL";
-        case RIL_REQUEST_SIM_TRANSMIT_CHANNEL: return "SIM_TRANSMIT_CHANNEL";
         case RIL_REQUEST_SEND_USSD: return "SEND_USSD";
         case RIL_REQUEST_CANCEL_USSD: return "CANCEL_USSD";
         case RIL_REQUEST_GET_CLIR: return "GET_CLIR";
@@ -3575,13 +3480,6 @@ requestToString(int request) {
         case RIL_UNSOL_EXIT_EMERGENCY_CALLBACK_MODE: return "UNSOL_EXIT_EMERGENCY_CALLBACK_MODE";
         case RIL_UNSOL_RIL_CONNECTED: return "UNSOL_RIL_CONNECTED";
         case RIL_UNSOL_VOICE_RADIO_TECH_CHANGED: return "UNSOL_VOICE_RADIO_TECH_CHANGED";
-#if defined(M2_VT_FEATURE_ENABLED)
-        case RIL_REQUEST_HANGUP_VT: return "HANGUP_VT";
-        case RIL_REQUEST_DIAL_VT: return "DIAL_VT";
-#endif
-#if defined(M2_GET_SIM_SMS_STORAGE_ENABLED)
-        case RIL_REQUEST_GET_SIM_SMS_STORAGE: return "RIL_REQUEST_GET_SIM_SMS_STORAGE";
-#endif
         default: return "<unknown request>";
     }
 }

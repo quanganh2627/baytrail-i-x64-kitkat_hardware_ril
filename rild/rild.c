@@ -39,8 +39,6 @@
 #define LIB_ARGS_PROPERTY   "rild.libargs"
 #define MAX_LIB_ARGS        16
 
-extern char gs_rilSocketName[RIL_SOCKET_NAME_MAX_LENGTH];
-
 static void usage(const char *argv0)
 {
     fprintf(stderr, "Usage: %s -l <ril impl library> [-- <args for impl library>]\n", argv0);
@@ -111,16 +109,10 @@ int main(int argc, char **argv)
 
     int i;
 
-    strncpy(gs_rilSocketName, "rild", RIL_SOCKET_NAME_MAX_LENGTH - 1);
-
     umask(S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH);
     for (i = 1; i < argc ;) {
         if (0 == strcmp(argv[i], "-l") && (argc - i > 1)) {
             rilLibPath = argv[i + 1];
-            i += 2;
-        } else if (0 == strcmp(argv[i], "-S")) {
-            strncpy(gs_rilSocketName, argv[i + 1], RIL_SOCKET_NAME_MAX_LENGTH - 1);
-            gs_rilSocketName[RIL_SOCKET_NAME_MAX_LENGTH - 1] = '\0';
             i += 2;
         } else if (0 == strcmp(argv[i], "--")) {
             i++;
@@ -283,7 +275,7 @@ OpenLib:
     funcs = rilInit(&s_rilEnv, argc, rilArgv);
 
     RIL_register(funcs);
-    signal(SIGPIPE, SIG_IGN);
+
 done:
 
     while(1) {
