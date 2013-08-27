@@ -8,12 +8,29 @@ LOCAL_SRC_FILES:= \
     ril_event.cpp
 
 LOCAL_SHARED_LIBRARIES := \
+    liblog \
     libutils \
     libbinder \
     libcutils \
     libhardware_legacy
 
 LOCAL_CFLAGS :=
+
+ifeq ($(strip $(M2_VT_FEATURE_ENABLED)),true)
+LOCAL_CFLAGS += -DM2_VT_FEATURE_ENABLED
+endif
+
+ifeq ($(strip $(M2_CALL_FAILED_CAUSE_FEATURE_ENABLED)),true)
+LOCAL_CFLAGS += -DM2_CALL_FAILED_CAUSE_FEATURE_ENABLED
+endif
+
+ifeq ($(strip $(M2_PIN_RETRIES_FEATURE_ENABLED)),true)
+LOCAL_CFLAGS += -DM2_PIN_RETRIES_FEATURE_ENABLED
+endif
+
+ifeq ($(strip $(M2_GET_SIM_SMS_STORAGE_ENABLED)),true)
+LOCAL_CFLAGS += -DM2_GET_SIM_SMS_STORAGE_ENABLED
+endif
 
 LOCAL_MODULE:= libril
 
@@ -35,6 +52,22 @@ LOCAL_STATIC_LIBRARIES := \
     libcutils
 
 LOCAL_CFLAGS :=
+
+ifeq ($(strip $(M2_VT_FEATURE_ENABLED)),true)
+LOCAL_CFLAGS += -DM2_VT_FEATURE_ENABLED
+endif
+
+ifeq ($(strip $(M2_CALL_FAILED_CAUSE_FEATURE_ENABLED)),true)
+LOCAL_CFLAGS += -DM2_CALL_FAILED_CAUSE_FEATURE_ENABLED
+endif
+
+ifeq ($(strip $(M2_PIN_RETRIES_FEATURE_ENABLED)),true)
+LOCAL_CFLAGS += -DM2_PIN_RETRIES_FEATURE_ENABLED
+endif
+
+ifeq ($(strip $(M2_GET_SIM_SMS_STORAGE_ENABLED)),true)
+LOCAL_CFLAGS += -DM2_GET_SIM_SMS_STORAGE_ENABLED
+endif
 
 LOCAL_MODULE:= libril_static
 
