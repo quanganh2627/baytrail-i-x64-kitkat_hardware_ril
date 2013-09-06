@@ -1791,6 +1791,7 @@ static int responseSsn(Parcel &p, void *response, size_t responselen) {
 
 static int responseCellList(Parcel &p, void *response, size_t responselen) {
     int num;
+
     if (response == NULL && responselen != 0) {
         RLOGE("invalid response: NULL");
         return RIL_ERRNO_INVALID_RESPONSE;
@@ -1806,74 +1807,15 @@ static int responseCellList(Parcel &p, void *response, size_t responselen) {
     /* number of records */
     num = responselen / sizeof(RIL_NeighboringCell *);
     p.writeInt32(num);
-    p.writeInt32(RIL_NEIGH_CELLINFO_VERSION);
+
     for (int i = 0 ; i < num ; i++) {
         RIL_NeighboringCell *p_cur = ((RIL_NeighboringCell **) response)[i];
-        if (RIL_NEIGH_CELLINFO_VERSION == 1) {
-            p.writeInt32(RIL_NEIGH_CELLINFO_VERSION);
-            p.writeInt32(p_cur->rssi);
-            writeStringToParcel (p, p_cur->cid);
-            appendPrintBuf("%s[cid=%s,rssi=%d],", printBuf,
-                    p_cur->cid, p_cur->rssi);
-        } else {
-            p.writeInt32(RIL_NEIGH_CELLINFO_VERSION);
-            p.writeInt32(p_cur->cellInfoType);
-            p.writeInt32(p_cur->isServingCell);
-            switch (p_cur->cellInfoType) {
-                case RIL_CELL_INFO_TYPE_GSM:
-                    p.writeInt32(p_cur->signalStrength.GW_SignalStrength.signalStrength);
-                    p.writeInt32(p_cur->signalStrength.GW_SignalStrength.bitErrorRate);
-                    if (p_cur->isServingCell) {
-                        p.writeInt32(p_cur->CellIdentity.gsm.mcc);
-                        p.writeInt32(p_cur->CellIdentity.gsm.mnc);
-                    } else {
-                        p.writeInt32(INT_MAX);
-                        p.writeInt32(INT_MAX);
-                    }
-                    p.writeInt32(p_cur->CellIdentity.gsm.lac);
-                    p.writeInt32(p_cur->CellIdentity.gsm.cid);
-                    // Dummy value for Psc as at Java side the same
-                    //  class is used for bot GSM and WCDMA
-                    p.writeInt32(INT_MAX);
-                break;
-                case RIL_CELL_INFO_TYPE_WCDMA:
-                    p.writeInt32(p_cur->signalStrength.GW_SignalStrength.signalStrength);
-                    p.writeInt32(p_cur->signalStrength.GW_SignalStrength.bitErrorRate);
-                    if (p_cur->isServingCell) {
-                        p.writeInt32(p_cur->CellIdentity.wcdma.mcc);
-                        p.writeInt32(p_cur->CellIdentity.wcdma.mnc);
-                    } else {
-                        p.writeInt32(INT_MAX);
-                        p.writeInt32(INT_MAX);
-                    }
-                    p.writeInt32(p_cur->CellIdentity.wcdma.lac);
-                    p.writeInt32(p_cur->CellIdentity.wcdma.cid);
-                    p.writeInt32(p_cur->CellIdentity.wcdma.psc);
-                break;
-                case RIL_CELL_INFO_TYPE_LTE:
-                    p.writeInt32(p_cur->signalStrength.LTE_SignalStrength.signalStrength);
-                    p.writeInt32(p_cur->signalStrength.LTE_SignalStrength.rsrp);
-                    p.writeInt32(p_cur->signalStrength.LTE_SignalStrength.rsrq);
-                    p.writeInt32(p_cur->signalStrength.LTE_SignalStrength.rssnr);
-                    p.writeInt32(p_cur->signalStrength.LTE_SignalStrength.cqi);
-                    p.writeInt32(p_cur->signalStrength.LTE_SignalStrength.timingAdvance);
-                    if (p_cur->isServingCell) {
-                        p.writeInt32(p_cur->CellIdentity.lte.mcc);
-                        p.writeInt32(p_cur->CellIdentity.lte.mnc);
-                    } else {
-                        p.writeInt32(INT_MAX);
-                        p.writeInt32(INT_MAX);
-                    }
-                    p.writeInt32(p_cur->CellIdentity.lte.cid);
-                    p.writeInt32(p_cur->CellIdentity.lte.pcid);
-                    p.writeInt32(p_cur->CellIdentity.lte.tac);
-                break;
-                default:
-                break;
-            }
-            appendPrintBuf("%s[type=%d],", printBuf,
-                    p_cur->cellInfoType);
-        }
+
+        p.writeInt32(p_cur->rssi);
+        writeStringToParcel (p, p_cur->cid);
+
+        appendPrintBuf("%s[cid=%s,rssi=%d],", printBuf,
+            p_cur->cid, p_cur->rssi);
     }
     removeLastChar;
     closeResponse;
@@ -2355,8 +2297,8 @@ static int responseCellInfoList(Parcel &p, void *response, size_t responselen)
 
                 p.writeInt32(p_cur->CellInfo.lte.cellIdentityLte.mcc);
                 p.writeInt32(p_cur->CellInfo.lte.cellIdentityLte.mnc);
-                p.writeInt32(p_cur->CellInfo.lte.cellIdentityLte.cid);
-                p.writeInt32(p_cur->CellInfo.lte.cellIdentityLte.pcid);
+                p.writeInt32(p_cur->CellInfo.lte.cellIdentityLte.ci);
+                p.writeInt32(p_cur->CellInfo.lte.cellIdentityLte.pci);
                 p.writeInt32(p_cur->CellInfo.lte.cellIdentityLte.tac);
 
                 appendPrintBuf("%s lteSS: ss=%d,rsrp=%d,rsrq=%d,rssnr=%d,cqi=%d,ta=%d", printBuf,
