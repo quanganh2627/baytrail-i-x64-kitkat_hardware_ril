@@ -695,6 +695,7 @@ invalid:
 /**
  * Callee expects const RIL_SIM_IO *
  * Payload is:
+ *   int32_t cla
  *   int32_t command
  *   int32_t fileid
  *   String path
@@ -717,6 +718,12 @@ dispatchSIM_IO (Parcel &p, RequestInfo *pRI) {
     memset (&simIO, 0, sizeof(simIO));
 
     // note we only check status at the end
+
+    simIO.v6.cla = 0;
+    if (pRI->pCI->requestNumber != RIL_REQUEST_SIM_IO) {
+        status = p.readInt32(&t);
+        simIO.v6.cla = (int)t;
+    }
 
     status = p.readInt32(&t);
     simIO.v6.command = (int)t;
@@ -3812,6 +3819,10 @@ requestToString(int request) {
         case RIL_REQUEST_GET_CELL_INFO_LIST: return"GET_CELL_INFO_LIST";
         case RIL_REQUEST_SET_UNSOL_CELL_INFO_LIST_RATE: return"SET_UNSOL_CELL_INFO_LIST_RATE";
         case RIL_REQUEST_SET_INITIAL_ATTACH_APN: return "RIL_REQUEST_SET_INITIAL_ATTACH_APN";
+        case RIL_REQUEST_SIM_TRANSMIT_BASIC: return "SIM_TRANSMIT_BASIC";
+        case RIL_REQUEST_SIM_OPEN_CHANNEL: return "SIM_OPEN_CHANNEL";
+        case RIL_REQUEST_SIM_CLOSE_CHANNEL: return "SIM_CLOSE_CHANNEL";
+        case RIL_REQUEST_SIM_TRANSMIT_CHANNEL: return "SIM_TRANSMIT_CHANNEL";
         case RIL_REQUEST_IMS_REGISTRATION_STATE: return "IMS_REGISTRATION_STATE";
         case RIL_REQUEST_IMS_SEND_SMS: return "IMS_SEND_SMS";
         case RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED: return "UNSOL_RESPONSE_RADIO_STATE_CHANGED";
