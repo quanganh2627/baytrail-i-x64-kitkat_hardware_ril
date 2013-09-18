@@ -552,6 +552,12 @@ typedef struct
   int              pin1_replaced;   /* applicable to USIM, CSIM & ISIM */
   RIL_PinState     pin1;
   RIL_PinState     pin2;
+#if defined(M2_PIN_RETRIES_FEATURE_ENABLED)
+  int pin1_num_retries;
+  int puk1_num_retries;
+  int pin2_num_retries;
+  int puk2_num_retries;
+#endif // M2_PIN_RETRIES_FEATURE_ENABLED
 } RIL_AppStatus;
 
 /* Deprecated, use RIL_CardStatus_v6 */
@@ -3602,6 +3608,68 @@ typedef struct {
 // "response" is a const RIL_SIM_IO_Response *
 #define RIL_REQUEST_SIM_TRANSMIT_CHANNEL 117
 
+#if defined(M2_VT_FEATURE_ENABLED)
+
+/**
+ * RIL_REQUEST_HANGUP_VT
+ *
+ * Hang-up the current GSM/UMTS call of the MT, and set the cause.
+ * It can be used when the user would like to fall back an
+ * incoming VT call to VOICE call.
+ *
+ * "data" is int *
+ * ((int *)data)[0] is cause value
+ *
+ * "response" is NULL
+ *
+ * Valid errors:
+ *  SUCCESS
+ *  GENERIC_FAILURE
+ *
+ */
+#define RIL_REQUEST_HANGUP_VT 118
+
+/**
+ * RIL_REQUEST_DIAL_VT
+ *
+ * Initiate VT call.
+ *
+ * "data" is const RIL_Dial *
+ *
+ * "response" is NULL
+ *
+ * Valid errors:
+ *  SUCCESS
+ *  RADIO_NOT_AVAILABLE (radio resetting)
+ *  GENERIC_FAILURE
+ *
+ */
+#define RIL_REQUEST_DIAL_VT 119
+
+#endif  //(M2_VT_FEATURE_ENABLED)
+
+#if defined(M2_GET_SIM_SMS_STORAGE_ENABLED)
+
+/**
+ * RIL_REQUEST_GET_SIM_SMS_STORAGE
+ *
+ * Get the current memory storage information of SMS message in SIM card.
+ *
+ * "data" is NULL
+ *
+ * "response" is const int *
+ * ((const int *)response)[0] is current stored SIM SMS number
+ * ((const int *)response)[1] is total SIM SMS number
+ *
+ * Valid errors:
+ * SUCCESS, on success
+ * RADIO_NOT_AVAILABLE (radio resetting)
+ * GENERIC_FAILURE, if an error occurred
+ */
+#define RIL_REQUEST_GET_SIM_SMS_STORAGE 120
+
+#endif // M2_GET_SIM_SMS_STORAGE_ENABLED
+
 /***********************************************************************/
 
 
@@ -4106,6 +4174,22 @@ typedef struct {
  *
  */
 #define RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED 1037
+
+#if defined(M2_CALL_FAILED_CAUSE_FEATURE_ENABLED)
+
+/**
+ * RIL_UNSOL_CALL_FAILED_CAUSE
+ *
+ * Call failed cause report.
+ *
+ * "data" is int *
+ * ((int *)data)[0] is call id
+ * ((int *)data)[1] is failed cause, refer to TS 24.008 Table 10.5.123
+ */
+#define RIL_UNSOL_CALL_FAILED_CAUSE 1038
+
+
+#endif // (M2_CALL_FAILED_CAUSE_FEATURE_ENABLED)
 
 /***********************************************************************/
 
