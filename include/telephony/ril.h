@@ -3551,7 +3551,7 @@ typedef struct {
  *  GENERIC_FAILURE
  *
  */
-#define RIL_REQUEST_HANGUP_VT 113
+#define RIL_REQUEST_HANGUP_VT 115
 
 /**
  * RIL_REQUEST_DIAL_VT
@@ -3568,7 +3568,7 @@ typedef struct {
  *  GENERIC_FAILURE
  *
  */
-#define RIL_REQUEST_DIAL_VT 114
+#define RIL_REQUEST_DIAL_VT 116
 
 #endif  //(M2_VT_FEATURE_ENABLED)
 
@@ -3590,7 +3590,7 @@ typedef struct {
  * RADIO_NOT_AVAILABLE (radio resetting)
  * GENERIC_FAILURE, if an error occurred
  */
-#define RIL_REQUEST_GET_SIM_SMS_STORAGE 115
+#define RIL_REQUEST_GET_SIM_SMS_STORAGE 117
 
 #endif // M2_GET_SIM_SMS_STORAGE_ENABLED
 
