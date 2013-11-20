@@ -462,6 +462,8 @@ typedef enum {
     RIL_DATA_PROFILE_MMS        = 5,
     RIL_DATA_PROFILE_SUPL       = 6,
     RIL_DATA_PROFILE_HIPRI      = 7,
+    RIL_DATA_PROFILE_XCAP       = 8,
+    RIL_DATA_PROFILE_EMERGENCY  = 9,
     RIL_DATA_PROFILE_OEM_BASE   = 1000    /* Start of OEM-specific profiles */
 } RIL_DataProfile;
 
