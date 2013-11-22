@@ -691,7 +691,6 @@ invalid:
 /**
  * Callee expects const RIL_SIM_IO *
  * Payload is:
- *   int32_t cla
  *   int32_t command
  *   int32_t fileid
  *   String path
@@ -714,12 +713,6 @@ dispatchSIM_IO (Parcel &p, RequestInfo *pRI) {
     memset (&simIO, 0, sizeof(simIO));
 
     // note we only check status at the end
-
-    simIO.v6.cla = 0;
-    if (pRI->pCI->requestNumber != RIL_REQUEST_SIM_IO) {
-        status = p.readInt32(&t);
-        simIO.v6.cla = (int)t;
-    }
 
     status = p.readInt32(&t);
     simIO.v6.command = (int)t;
@@ -1324,8 +1317,7 @@ blockingWrite(int fd, const void *buffer, size_t len) {
         do {
             written = write (fd, toWrite + writeOffset,
                                 len - writeOffset);
-        } while (written < 0 && (errno != EPIPE)
-                && ((errno == EINTR) || (errno == EAGAIN)));
+        } while (written < 0 && ((errno == EINTR) || (errno == EAGAIN)));
 
         if (written >= 0) {
             writeOffset += written;
@@ -2354,29 +2346,6 @@ static void sendSimStatusAppInfo(Parcel &p, int num_apps, RIL_AppStatus appStatu
             p.writeInt32(appStatus[i].pin1_replaced);
             p.writeInt32(appStatus[i].pin1);
             p.writeInt32(appStatus[i].pin2);
-#if defined(M2_PIN_RETRIES_FEATURE_ENABLED)
-            p.writeInt32(appStatus[i].pin1_num_retries);
-            p.writeInt32(appStatus[i].puk1_num_retries);
-            p.writeInt32(appStatus[i].pin2_num_retries);
-            p.writeInt32(appStatus[i].puk2_num_retries);
-            appendPrintBuf("%s[app_type=%d,app_state=%d,perso_substate=%d,\
-                    aid_ptr=%s,app_label_ptr=%s,pin1_replaced=%d,pin1=%d,pin2=%d,\
-                    pin1_num_retries=%d,puk1_num_retries=%d,pin2_num_retries=%d,\
-                    puk2_num_retries=%d],",
-                    printBuf,
-                    appStatus[i].app_type,
-                    appStatus[i].app_state,
-                    appStatus[i].perso_substate,
-                    appStatus[i].aid_ptr,
-                    appStatus[i].app_label_ptr,
-                    appStatus[i].pin1_replaced,
-                    appStatus[i].pin1,
-                    appStatus[i].pin2,
-                    appStatus[i].pin1_num_retries,
-                    appStatus[i].puk1_num_retries,
-                    appStatus[i].pin2_num_retries,
-                    appStatus[i].puk2_num_retries);
-#else
             appendPrintBuf("%s[app_type=%d,app_state=%d,perso_substate=%d,\
                     aid_ptr=%s,app_label_ptr=%s,pin1_replaced=%d,pin1=%d,pin2=%d],",
                     printBuf,
@@ -2388,7 +2357,6 @@ static void sendSimStatusAppInfo(Parcel &p, int num_apps, RIL_AppStatus appStatu
                     appStatus[i].pin1_replaced,
                     appStatus[i].pin1,
                     appStatus[i].pin2);
-#endif // M2_PIN_RETRIES_FEATURE_ENABLED
         }
         closeResponse;
 }
@@ -3021,9 +2989,7 @@ RIL_register (const RIL_RadioFunctions *callbacks) {
     s_fdListen = ret;
 
 #else
-    //s_fdListen = android_get_control_socket(SOCKET_NAME_RIL);
-    s_fdListen = android_get_control_socket(gs_rilSocketName);
-    ALOGD("Gettting socket '%s", gs_rilSocketName);
+    s_fdListen = android_get_control_socket(SOCKET_NAME_RIL);
     if (s_fdListen < 0) {
         RLOGE("Failed to get socket '" SOCKET_NAME_RIL "'");
         exit(-1);
@@ -3557,10 +3523,6 @@ requestToString(int request) {
         case RIL_REQUEST_SEND_SMS_EXPECT_MORE: return "SEND_SMS_EXPECT_MORE";
         case RIL_REQUEST_SETUP_DATA_CALL: return "SETUP_DATA_CALL";
         case RIL_REQUEST_SIM_IO: return "SIM_IO";
-        case RIL_REQUEST_SIM_TRANSMIT_BASIC: return "SIM_TRANSMIT_BASIC";
-        case RIL_REQUEST_SIM_OPEN_CHANNEL: return "SIM_OPEN_CHANNEL";
-        case RIL_REQUEST_SIM_CLOSE_CHANNEL: return "SIM_CLOSE_CHANNEL";
-        case RIL_REQUEST_SIM_TRANSMIT_CHANNEL: return "SIM_TRANSMIT_CHANNEL";
         case RIL_REQUEST_SEND_USSD: return "SEND_USSD";
         case RIL_REQUEST_CANCEL_USSD: return "CANCEL_USSD";
         case RIL_REQUEST_GET_CLIR: return "GET_CLIR";
@@ -3675,13 +3637,6 @@ requestToString(int request) {
         case RIL_UNSOL_RIL_CONNECTED: return "UNSOL_RIL_CONNECTED";
         case RIL_UNSOL_VOICE_RADIO_TECH_CHANGED: return "UNSOL_VOICE_RADIO_TECH_CHANGED";
         case RIL_UNSOL_CELL_INFO_LIST: return "UNSOL_CELL_INFO_LIST";
-#if defined(M2_VT_FEATURE_ENABLED)
-        case RIL_REQUEST_HANGUP_VT: return "HANGUP_VT";
-        case RIL_REQUEST_DIAL_VT: return "DIAL_VT";
-#endif
-#if defined(M2_GET_SIM_SMS_STORAGE_ENABLED)
-        case RIL_REQUEST_GET_SIM_SMS_STORAGE: return "RIL_REQUEST_GET_SIM_SMS_STORAGE";
-#endif
         default: return "<unknown request>";
     }
 }
