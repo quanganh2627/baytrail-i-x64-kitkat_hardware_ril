@@ -23,7 +23,7 @@
 #include <telephony/ril_cdma_sms.h>
 #include <cutils/sockets.h>
 #include <cutils/jstring.h>
-#include <cutils/record_stream.h>
+#include <telephony/record_stream.h>
 #include <utils/Log.h>
 #include <utils/SystemClock.h>
 #include <pthread.h>
@@ -204,9 +204,13 @@ static void dispatchRaw(Parcel& p, RequestInfo *pRI);
 static void dispatchSmsWrite (Parcel &p, RequestInfo *pRI);
 static void dispatchDataCall (Parcel& p, RequestInfo *pRI);
 static void dispatchVoiceRadioTech (Parcel& p, RequestInfo *pRI);
+static void dispatchSetInitialAttachApn (Parcel& p, RequestInfo *pRI);
 static void dispatchCdmaSubscriptionSource (Parcel& p, RequestInfo *pRI);
 
 static void dispatchCdmaSms(Parcel &p, RequestInfo *pRI);
+static void dispatchImsSms(Parcel &p, RequestInfo *pRI);
+static void dispatchImsCdmaSms(Parcel &p, RequestInfo *pRI, uint8_t retry, int32_t messageRef);
+static void dispatchImsGsmSms(Parcel &p, RequestInfo *pRI, uint8_t retry, int32_t messageRef);
 static void dispatchCdmaSmsAck(Parcel &p, RequestInfo *pRI);
 static void dispatchGsmBrSmsCnf(Parcel &p, RequestInfo *pRI);
 static void dispatchCdmaBrSmsCnf(Parcel &p, RequestInfo *pRI);
@@ -691,6 +695,7 @@ invalid:
 /**
  * Callee expects const RIL_SIM_IO *
  * Payload is:
+ *   int32_t cla
  *   int32_t command
  *   int32_t fileid
  *   String path
@@ -713,6 +718,12 @@ dispatchSIM_IO (Parcel &p, RequestInfo *pRI) {
     memset (&simIO, 0, sizeof(simIO));
 
     // note we only check status at the end
+
+    simIO.v6.cla = 0;
+    if (pRI->pCI->requestNumber != RIL_REQUEST_SIM_IO) {
+        status = p.readInt32(&t);
+        simIO.v6.cla = (int)t;
+    }
 
     status = p.readInt32(&t);
     simIO.v6.command = (int)t;
@@ -878,9 +889,8 @@ invalid:
     return;
 }
 
-static void
-dispatchCdmaSms(Parcel &p, RequestInfo *pRI) {
-    RIL_CDMA_SMS_Message rcsm;
+static status_t
+constructCdmaSms(Parcel &p, RequestInfo *pRI, RIL_CDMA_SMS_Message& rcsm) {
     int32_t  t;
     uint8_t ut;
     status_t status;
@@ -944,7 +954,7 @@ dispatchCdmaSms(Parcel &p, RequestInfo *pRI) {
     }
 
     if (status != NO_ERROR) {
-        goto invalid;
+        return status;
     }
 
     startRequest;
@@ -956,11 +966,166 @@ dispatchCdmaSms(Parcel &p, RequestInfo *pRI) {
 
     printRequest(pRI->token, pRI->pCI->requestNumber);
 
+    return status;
+}
+
+static void
+dispatchCdmaSms(Parcel &p, RequestInfo *pRI) {
+    RIL_CDMA_SMS_Message rcsm;
+
+    ALOGD("dispatchCdmaSms");
+    if (NO_ERROR != constructCdmaSms(p, pRI, rcsm)) {
+        goto invalid;
+    }
+
     s_callbacks.onRequest(pRI->pCI->requestNumber, &rcsm, sizeof(rcsm),pRI);
 
 #ifdef MEMSET_FREED
     memset(&rcsm, 0, sizeof(rcsm));
 #endif
+
+    return;
+
+invalid:
+    invalidCommandBlock(pRI);
+    return;
+}
+
+static void
+dispatchImsCdmaSms(Parcel &p, RequestInfo *pRI, uint8_t retry, int32_t messageRef) {
+    RIL_IMS_SMS_Message rism;
+    RIL_CDMA_SMS_Message rcsm;
+
+    ALOGD("dispatchImsCdmaSms: retry=%d, messageRef=%d", retry, messageRef);
+
+    if (NO_ERROR != constructCdmaSms(p, pRI, rcsm)) {
+        goto invalid;
+    }
+    memset(&rism, 0, sizeof(rism));
+    rism.tech = RADIO_TECH_3GPP2;
+    rism.retry = retry;
+    rism.messageRef = messageRef;
+    rism.message.cdmaMessage = &rcsm;
+
+    s_callbacks.onRequest(pRI->pCI->requestNumber, &rism,
+            sizeof(RIL_RadioTechnologyFamily)+sizeof(uint8_t)+sizeof(int32_t)
+            +sizeof(rcsm),pRI);
+
+#ifdef MEMSET_FREED
+    memset(&rcsm, 0, sizeof(rcsm));
+    memset(&rism, 0, sizeof(rism));
+#endif
+
+    return;
+
+invalid:
+    invalidCommandBlock(pRI);
+    return;
+}
+
+static void
+dispatchImsGsmSms(Parcel &p, RequestInfo *pRI, uint8_t retry, int32_t messageRef) {
+    RIL_IMS_SMS_Message rism;
+    int32_t countStrings;
+    status_t status;
+    size_t datalen;
+    char **pStrings;
+    ALOGD("dispatchImsGsmSms: retry=%d, messageRef=%d", retry, messageRef);
+
+    status = p.readInt32 (&countStrings);
+
+    if (status != NO_ERROR) {
+        goto invalid;
+    }
+
+    memset(&rism, 0, sizeof(rism));
+    rism.tech = RADIO_TECH_3GPP;
+    rism.retry = retry;
+    rism.messageRef = messageRef;
+
+    startRequest;
+    appendPrintBuf("%sformat=%d,", printBuf, rism.format);
+    if (countStrings == 0) {
+        // just some non-null pointer
+        pStrings = (char **)alloca(sizeof(char *));
+        datalen = 0;
+    } else if (((int)countStrings) == -1) {
+        pStrings = NULL;
+        datalen = 0;
+    } else {
+        datalen = sizeof(char *) * countStrings;
+
+        pStrings = (char **)alloca(datalen);
+
+        for (int i = 0 ; i < countStrings ; i++) {
+            pStrings[i] = strdupReadString(p);
+            appendPrintBuf("%s%s,", printBuf, pStrings[i]);
+        }
+    }
+    removeLastChar;
+    closeRequest;
+    printRequest(pRI->token, pRI->pCI->requestNumber);
+
+    rism.message.gsmMessage = pStrings;
+    s_callbacks.onRequest(pRI->pCI->requestNumber, &rism,
+            sizeof(RIL_RadioTechnologyFamily)+sizeof(uint8_t)+sizeof(int32_t)
+            +datalen, pRI);
+
+    if (pStrings != NULL) {
+        for (int i = 0 ; i < countStrings ; i++) {
+#ifdef MEMSET_FREED
+            memsetString (pStrings[i]);
+#endif
+            free(pStrings[i]);
+        }
+
+#ifdef MEMSET_FREED
+        memset(pStrings, 0, datalen);
+#endif
+    }
+
+#ifdef MEMSET_FREED
+    memset(&rism, 0, sizeof(rism));
+#endif
+    return;
+invalid:
+    ALOGE("dispatchImsGsmSms invalid block");
+    invalidCommandBlock(pRI);
+    return;
+}
+
+static void
+dispatchImsSms(Parcel &p, RequestInfo *pRI) {
+    int32_t  t;
+    status_t status = p.readInt32(&t);
+    RIL_RadioTechnologyFamily format;
+    uint8_t retry;
+    int32_t messageRef;
+
+    ALOGD("dispatchImsSms");
+    if (status != NO_ERROR) {
+        goto invalid;
+    }
+    format = (RIL_RadioTechnologyFamily) t;
+
+    // read retry field
+    status = p.read(&retry,sizeof(retry));
+    if (status != NO_ERROR) {
+        goto invalid;
+    }
+    // read messageRef field
+    status = p.read(&messageRef,sizeof(messageRef));
+    if (status != NO_ERROR) {
+        goto invalid;
+    }
+
+    if (RADIO_TECH_3GPP == format) {
+        dispatchImsGsmSms(p, pRI, retry, messageRef);
+    } else if (RADIO_TECH_3GPP2 == format) {
+        dispatchImsCdmaSms(p, pRI, retry, messageRef);
+    } else {
+        ALOGE("requestImsSendSMS invalid format value =%d", format);
+    }
 
     return;
 
@@ -1305,6 +1470,56 @@ static void dispatchCdmaSubscriptionSource(Parcel& p, RequestInfo *pRI) {
         RIL_onRequestComplete(pRI, RIL_E_SUCCESS, &cdmaSubscriptionSource, sizeof(int));
 }
 
+static void dispatchSetInitialAttachApn(Parcel &p, RequestInfo *pRI)
+{
+    RIL_InitialAttachApn pf;
+    int32_t  t;
+    status_t status;
+
+    memset(&pf, 0, sizeof(pf));
+
+    pf.apn = strdupReadString(p);
+    pf.protocol = strdupReadString(p);
+
+    status = p.readInt32(&t);
+    pf.authtype = (int) t;
+
+    pf.username = strdupReadString(p);
+    pf.password = strdupReadString(p);
+
+    startRequest;
+    appendPrintBuf("%sapn=%s, protocol=%s, auth_type=%d, username=%s, password=%s",
+            printBuf, pf.apn, pf.protocol, pf.auth_type, pf.username, pf.password);
+    closeRequest;
+    printRequest(pRI->token, pRI->pCI->requestNumber);
+
+    if (status != NO_ERROR) {
+        goto invalid;
+    }
+    s_callbacks.onRequest(pRI->pCI->requestNumber, &pf, sizeof(pf), pRI);
+
+#ifdef MEMSET_FREED
+    memsetString(pf.apn);
+    memsetString(pf.protocol);
+    memsetString(pf.username);
+    memsetString(pf.password);
+#endif
+
+    free(pf.apn);
+    free(pf.protocol);
+    free(pf.username);
+    free(pf.password);
+
+#ifdef MEMSET_FREED
+    memset(&pf, 0, sizeof(pf));
+#endif
+
+    return;
+invalid:
+    invalidCommandBlock(pRI);
+    return;
+}
+
 static int
 blockingWrite(int fd, const void *buffer, size_t len) {
     size_t writeOffset = 0;
@@ -1317,7 +1532,8 @@ blockingWrite(int fd, const void *buffer, size_t len) {
         do {
             written = write (fd, toWrite + writeOffset,
                                 len - writeOffset);
-        } while (written < 0 && ((errno == EINTR) || (errno == EAGAIN)));
+        } while (written < 0 && (errno != EPIPE)
+                && ((errno == EINTR) || (errno == EAGAIN)));
 
         if (written >= 0) {
             writeOffset += written;
@@ -2346,6 +2562,29 @@ static void sendSimStatusAppInfo(Parcel &p, int num_apps, RIL_AppStatus appStatu
             p.writeInt32(appStatus[i].pin1_replaced);
             p.writeInt32(appStatus[i].pin1);
             p.writeInt32(appStatus[i].pin2);
+#if defined(M2_PIN_RETRIES_FEATURE_ENABLED)
+            p.writeInt32(appStatus[i].pin1_num_retries);
+            p.writeInt32(appStatus[i].puk1_num_retries);
+            p.writeInt32(appStatus[i].pin2_num_retries);
+            p.writeInt32(appStatus[i].puk2_num_retries);
+            appendPrintBuf("%s[app_type=%d,app_state=%d,perso_substate=%d,\
+                    aid_ptr=%s,app_label_ptr=%s,pin1_replaced=%d,pin1=%d,pin2=%d,\
+                    pin1_num_retries=%d,puk1_num_retries=%d,pin2_num_retries=%d,\
+                    puk2_num_retries=%d],",
+                    printBuf,
+                    appStatus[i].app_type,
+                    appStatus[i].app_state,
+                    appStatus[i].perso_substate,
+                    appStatus[i].aid_ptr,
+                    appStatus[i].app_label_ptr,
+                    appStatus[i].pin1_replaced,
+                    appStatus[i].pin1,
+                    appStatus[i].pin2,
+                    appStatus[i].pin1_num_retries,
+                    appStatus[i].puk1_num_retries,
+                    appStatus[i].pin2_num_retries,
+                    appStatus[i].puk2_num_retries);
+#else
             appendPrintBuf("%s[app_type=%d,app_state=%d,perso_substate=%d,\
                     aid_ptr=%s,app_label_ptr=%s,pin1_replaced=%d,pin1=%d,pin2=%d],",
                     printBuf,
@@ -2357,6 +2596,7 @@ static void sendSimStatusAppInfo(Parcel &p, int num_apps, RIL_AppStatus appStatu
                     appStatus[i].pin1_replaced,
                     appStatus[i].pin1,
                     appStatus[i].pin2);
+#endif // M2_PIN_RETRIES_FEATURE_ENABLED
         }
         closeResponse;
 }
@@ -2989,7 +3229,9 @@ RIL_register (const RIL_RadioFunctions *callbacks) {
     s_fdListen = ret;
 
 #else
-    s_fdListen = android_get_control_socket(SOCKET_NAME_RIL);
+    //s_fdListen = android_get_control_socket(SOCKET_NAME_RIL);
+    s_fdListen = android_get_control_socket(gs_rilSocketName);
+    ALOGD("Gettting socket '%s", gs_rilSocketName);
     if (s_fdListen < 0) {
         RLOGE("Failed to get socket '" SOCKET_NAME_RIL "'");
         exit(-1);
@@ -3430,7 +3672,7 @@ const char *
 failCauseToString(RIL_Errno e) {
     switch(e) {
         case RIL_E_SUCCESS: return "E_SUCCESS";
-        case RIL_E_RADIO_NOT_AVAILABLE: return "E_RAIDO_NOT_AVAILABLE";
+        case RIL_E_RADIO_NOT_AVAILABLE: return "E_RADIO_NOT_AVAILABLE";
         case RIL_E_GENERIC_FAILURE: return "E_GENERIC_FAILURE";
         case RIL_E_PASSWORD_INCORRECT: return "E_PASSWORD_INCORRECT";
         case RIL_E_SIM_PIN2: return "E_SIM_PIN2";
@@ -3601,6 +3843,13 @@ requestToString(int request) {
         case RIL_REQUEST_VOICE_RADIO_TECH: return "VOICE_RADIO_TECH";
         case RIL_REQUEST_GET_CELL_INFO_LIST: return"GET_CELL_INFO_LIST";
         case RIL_REQUEST_SET_UNSOL_CELL_INFO_LIST_RATE: return"SET_UNSOL_CELL_INFO_LIST_RATE";
+        case RIL_REQUEST_SET_INITIAL_ATTACH_APN: return "RIL_REQUEST_SET_INITIAL_ATTACH_APN";
+        case RIL_REQUEST_SIM_TRANSMIT_BASIC: return "SIM_TRANSMIT_BASIC";
+        case RIL_REQUEST_SIM_OPEN_CHANNEL: return "SIM_OPEN_CHANNEL";
+        case RIL_REQUEST_SIM_CLOSE_CHANNEL: return "SIM_CLOSE_CHANNEL";
+        case RIL_REQUEST_SIM_TRANSMIT_CHANNEL: return "SIM_TRANSMIT_CHANNEL";
+        case RIL_REQUEST_IMS_REGISTRATION_STATE: return "IMS_REGISTRATION_STATE";
+        case RIL_REQUEST_IMS_SEND_SMS: return "IMS_SEND_SMS";
         case RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED: return "UNSOL_RESPONSE_RADIO_STATE_CHANGED";
         case RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED: return "UNSOL_RESPONSE_CALL_STATE_CHANGED";
         case RIL_UNSOL_RESPONSE_VOICE_NETWORK_STATE_CHANGED: return "UNSOL_RESPONSE_VOICE_NETWORK_STATE_CHANGED";
@@ -3637,6 +3886,14 @@ requestToString(int request) {
         case RIL_UNSOL_RIL_CONNECTED: return "UNSOL_RIL_CONNECTED";
         case RIL_UNSOL_VOICE_RADIO_TECH_CHANGED: return "UNSOL_VOICE_RADIO_TECH_CHANGED";
         case RIL_UNSOL_CELL_INFO_LIST: return "UNSOL_CELL_INFO_LIST";
+        case RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED: return "RESPONSE_IMS_NETWORK_STATE_CHANGED";
+#if defined(M2_VT_FEATURE_ENABLED)
+        case RIL_REQUEST_HANGUP_VT: return "HANGUP_VT";
+        case RIL_REQUEST_DIAL_VT: return "DIAL_VT";
+#endif
+#if defined(M2_GET_SIM_SMS_STORAGE_ENABLED)
+        case RIL_REQUEST_GET_SIM_SMS_STORAGE: return "RIL_REQUEST_GET_SIM_SMS_STORAGE";
+#endif
         default: return "<unknown request>";
     }
 }

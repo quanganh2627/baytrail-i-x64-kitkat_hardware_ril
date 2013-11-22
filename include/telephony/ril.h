@@ -19,6 +19,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <telephony/ril_cdma_sms.h>
 #ifndef FEATURE_UNIT_TEST
 #include <sys/time.h>
 #endif /* !FEATURE_UNIT_TEST */
@@ -27,11 +28,13 @@
 extern "C" {
 #endif
 
-#define RIL_VERSION 8     /* Current version */
+#define RIL_VERSION 9     /* Current version */
 #define RIL_VERSION_MIN 6 /* Minimum RIL_VERSION supported */
 
 #define CDMA_ALPHA_INFO_BUFFER_LENGTH 64
 #define CDMA_NUMBER_INFO_BUFFER_LENGTH 81
+
+#define RIL_SOCKET_NAME_MAX_LENGTH 6
 
 typedef void * RIL_Token;
 
@@ -56,8 +59,12 @@ typedef enum {
                                                    location */
     RIL_E_MODE_NOT_SUPPORTED = 13,              /* HW does not support preferred network type */
     RIL_E_FDN_CHECK_FAILURE = 14,               /* command failed because recipient is not on FDN list */
-    RIL_E_ILLEGAL_SIM_OR_ME = 15                /* network selection failed due to
+    RIL_E_ILLEGAL_SIM_OR_ME = 15,                /* network selection failed due to
                                                    illegal SIM or ME */
+    RIL_E_NETWORK_PUK_REQUIRED = 16,            /* Network Personalisation PUK required */
+    RIL_E_MISSING_RESOURCE = 17,
+    RIL_E_NO_SUCH_ELEMENT = 18,
+    RIL_E_INVALID_PARAMETER = 19                /* SEEK for Android */
 } RIL_Errno;
 
 typedef enum {
@@ -85,6 +92,12 @@ typedef enum {
     RADIO_STATE_NV_READY = 9,              /* Radio is on and the NV interface is available */
     RADIO_STATE_ON = 10                    /* Radio is on */
 } RIL_RadioState;
+
+typedef enum {
+    RIL_RADIO_OFF_REASON_NONE = 0,
+    RIL_RADIO_OFF_REASON_SHUTDOWN = 1,
+    RIL_RADIO_OFF_REASON_AIRPLANE_MODE = 2
+} RIL_Radio_Off_Reason;
 
 typedef enum {
     RADIO_TECH_UNKNOWN = 0,
@@ -120,7 +133,8 @@ typedef enum {
     PREF_NET_TYPE_LTE_CDMA_EVDO            = 8, /* LTE, CDMA and EvDo */
     PREF_NET_TYPE_LTE_GSM_WCDMA            = 9, /* LTE, GSM/WCDMA */
     PREF_NET_TYPE_LTE_CMDA_EVDO_GSM_WCDMA  = 10, /* LTE, CDMA, EvDo, GSM/WCDMA */
-    PREF_NET_TYPE_LTE_ONLY                 = 11  /* LTE only */
+    PREF_NET_TYPE_LTE_ONLY                 = 11, /* LTE only */
+    PREF_NET_TYPE_LTE_WCDMA                = 12  /* LTE/WCDMA */
 } RIL_PreferredNetworkType;
 
 /* Source for cdma subscription */
@@ -232,6 +246,28 @@ typedef struct {
                                    to point connections. */
 } RIL_Data_Call_Response_v6;
 
+typedef enum {
+    RADIO_TECH_3GPP = 1, /* 3GPP Technologies - GSM, WCDMA */
+    RADIO_TECH_3GPP2 = 2 /* 3GPP2 Technologies - CDMA */
+} RIL_RadioTechnologyFamily;
+
+typedef struct {
+    RIL_RadioTechnologyFamily tech;
+    unsigned char             retry;       /* 0 == not retry, nonzero == retry */
+    int                       messageRef;  /* Valid field if retry is set to nonzero.
+                                              Contains messageRef from RIL_SMS_Response
+                                              corresponding to failed MO SMS.
+                                            */
+
+    union {
+        /* Valid field if tech is RADIO_TECH_3GPP2. See RIL_REQUEST_CDMA_SEND_SMS */
+        RIL_CDMA_SMS_Message* cdmaMessage;
+
+        /* Valid field if tech is RADIO_TECH_3GPP. See RIL_REQUEST_SEND_SMS */
+        char**                gsmMessage;
+    } message;
+} RIL_IMS_SMS_Message;
+
 typedef struct {
     int messageRef;   /* TP-Message-Reference for GSM,
                          and BearerData MessageId for CDMA
@@ -268,6 +304,7 @@ typedef struct {
 } RIL_Dial;
 
 typedef struct {
+    int cla;
     int command;    /* one of the commands listed for TS 27.007 +CRSM*/
     int fileid;     /* EF id */
     char *path;     /* "pathid" from TS 27.007 +CRSM command.
@@ -282,6 +319,7 @@ typedef struct {
 } RIL_SIM_IO_v5;
 
 typedef struct {
+    int cla;
     int command;    /* one of the commands listed for TS 27.007 +CRSM*/
     int fileid;     /* EF id */
     char *path;     /* "pathid" from TS 27.007 +CRSM command.
@@ -347,7 +385,11 @@ typedef enum {
     CALL_FAIL_NORMAL = 16,
     CALL_FAIL_BUSY = 17,
     CALL_FAIL_CONGESTION = 34,
+    CALL_FAIL_RESSOURCES_UNAVAILABLE = 47,
+    CALL_FAIL_BEARER_CAPABILITY_NOT_AUTHORIZED = 57,
+    CALL_FAIL_BEARER_CAPABILITY_NOT_AVAILABLE = 58,
     CALL_FAIL_ACM_LIMIT_EXCEEDED = 68,
+    CALL_FAIL_INCOMPATIBLE_DESTINATION = 88,
     CALL_FAIL_CALL_BARRED = 240,
     CALL_FAIL_FDN_BLOCKED = 241,
     CALL_FAIL_IMSI_UNKNOWN_IN_VLR = 242,
@@ -387,6 +429,7 @@ typedef enum {
     PDP_FAIL_SERVICE_OPTION_NOT_SUBSCRIBED = 0x21, /* no retry */
     PDP_FAIL_SERVICE_OPTION_OUT_OF_ORDER = 0x22,
     PDP_FAIL_NSAPI_IN_USE = 0x23,                  /* no retry */
+    PDP_FAIL_REGULAR_DEACTIVATION = 0x24,          /* restart radio */
     PDP_FAIL_ONLY_IPV4_ALLOWED = 0x32,             /* no retry */
     PDP_FAIL_ONLY_IPV6_ALLOWED = 0x33,             /* no retry */
     PDP_FAIL_ONLY_SINGLE_BEARER_ALLOWED = 0x34,
@@ -397,7 +440,7 @@ typedef enum {
     PDP_FAIL_DATA_REGISTRATION_FAIL = -2,
 
    /* reasons for data call drop - network/modem disconnect */
-    PDP_FAIL_SIGNAL_LOST = -3,            /* no retry */
+    PDP_FAIL_SIGNAL_LOST = -3,
     PDP_FAIL_PREF_RADIO_TECH_CHANGED = -4,/* preferred technology has changed, should retry
                                              with parameters appropriate for new technology */
     PDP_FAIL_RADIO_POWER_OFF = -5,        /* data call was disconnected because radio was resetting,
@@ -413,6 +456,12 @@ typedef enum {
 typedef enum {
     RIL_DATA_PROFILE_DEFAULT    = 0,
     RIL_DATA_PROFILE_TETHERED   = 1,
+    RIL_DATA_PROFILE_IMS        = 2,
+    RIL_DATA_PROFILE_FOTA       = 3,
+    RIL_DATA_PROFILE_CBS        = 4,
+    RIL_DATA_PROFILE_MMS        = 5,
+    RIL_DATA_PROFILE_SUPL       = 6,
+    RIL_DATA_PROFILE_HIPRI      = 7,
     RIL_DATA_PROFILE_OEM_BASE   = 1000    /* Start of OEM-specific profiles */
 } RIL_DataProfile;
 
@@ -509,6 +558,12 @@ typedef struct
   int              pin1_replaced;   /* applicable to USIM, CSIM & ISIM */
   RIL_PinState     pin1;
   RIL_PinState     pin2;
+#if defined(M2_PIN_RETRIES_FEATURE_ENABLED)
+  int pin1_num_retries;
+  int puk1_num_retries;
+  int pin2_num_retries;
+  int puk2_num_retries;
+#endif // M2_PIN_RETRIES_FEATURE_ENABLED
 } RIL_AppStatus;
 
 /* Deprecated, use RIL_CardStatus_v6 */
@@ -1556,6 +1611,7 @@ typedef struct {
  * "data" is int *
  * ((int *)data)[0] is > 0 for "Radio On"
  * ((int *)data)[0] is == 0 for "Radio Off"
+ * ((int *)data)[1] if data[0] is 0, data[1] is a RIL_Radio_Off_Reason.
  *
  * "response" is NULL
  *
@@ -3482,6 +3538,142 @@ typedef struct {
  */
 #define RIL_REQUEST_SET_UNSOL_CELL_INFO_LIST_RATE 110
 
+/**
+ * RIL_REQUEST_SET_INITIAL_ATTACH_APN
+ *
+ * Set an apn to initial attach network
+ * "response" is NULL
+ *
+ * Valid errors:
+ *  SUCCESS
+ *  RADIO_NOT_AVAILABLE (radio resetting)
+ *  GENERIC_FAILURE
+ *  SUBSCRIPTION_NOT_AVAILABLE
+ */
+#define RIL_REQUEST_SET_INITIAL_ATTACH_APN 111
+
+/**
+ * RIL_REQUEST_IMS_REGISTRATION_STATE
+ *
+ * Request current IMS registration state
+ *
+ * "data" is NULL
+ *
+ * "response" is int *
+ * ((int *)response)[0] is registration state:
+ *              0 - Not registered
+ *              1 - Registered
+ * ((int *)response)[1] is bitmap of the supported services:
+ *          & 0x1 - SMS supported
+ *
+ * If IMS is registered and supports SMS, then ((int *) response)[2]
+ * must follow with IMS SMS format:
+ *
+ * ((int *) response)[2] is of type const RIL_IMS_SMS_Format
+ */
+#define RIL_REQUEST_IMS_REGISTRATION_STATE 112
+
+/**
+ * RIL_REQUEST_IMS_SEND_SMS
+ *
+ * Send a SMS message over IMS
+ *
+ * "data" is const RIL_IMS_SMS_Message *
+ *
+ * "response" is a const RIL_SMS_Response *
+ *
+ * Based on the return error, caller decides to resend if sending sms
+ * fails. SMS_SEND_FAIL_RETRY means retry, and other errors means no retry.
+ * In case of retry, data is encoded based on Voice Technology available.
+ *
+ * Valid errors:
+ *  SUCCESS
+ *  RADIO_NOT_AVAILABLE
+ *  SMS_SEND_FAIL_RETRY
+ *  FDN_CHECK_FAILURE
+ *  GENERIC_FAILURE
+ *
+ */
+#define RIL_REQUEST_IMS_SEND_SMS 113
+
+// "data" is a const RIL_SIM_IO *
+// "response" is a const RIL_SIM_IO_Response *
+#define RIL_REQUEST_SIM_TRANSMIT_BASIC 114
+
+// "data" is a const char * containing the AID of the applet
+// "response" is a int * containing the channel id
+#define RIL_REQUEST_SIM_OPEN_CHANNEL 115
+
+// "data" is a const int * containing the channel id
+// "response" is NULL
+#define RIL_REQUEST_SIM_CLOSE_CHANNEL 116
+
+// "data" is a const RIL_SIM_IO *
+// "response" is a const RIL_SIM_IO_Response *
+#define RIL_REQUEST_SIM_TRANSMIT_CHANNEL 117
+
+#if defined(M2_VT_FEATURE_ENABLED)
+
+/**
+ * RIL_REQUEST_HANGUP_VT
+ *
+ * Hang-up the current GSM/UMTS call of the MT, and set the cause.
+ * It can be used when the user would like to fall back an
+ * incoming VT call to VOICE call.
+ *
+ * "data" is int *
+ * ((int *)data)[0] is cause value
+ *
+ * "response" is NULL
+ *
+ * Valid errors:
+ *  SUCCESS
+ *  GENERIC_FAILURE
+ *
+ */
+#define RIL_REQUEST_HANGUP_VT 120
+
+/**
+ * RIL_REQUEST_DIAL_VT
+ *
+ * Initiate VT call.
+ *
+ * "data" is const RIL_Dial *
+ *
+ * "response" is NULL
+ *
+ * Valid errors:
+ *  SUCCESS
+ *  RADIO_NOT_AVAILABLE (radio resetting)
+ *  GENERIC_FAILURE
+ *
+ */
+#define RIL_REQUEST_DIAL_VT 121
+
+#endif  //(M2_VT_FEATURE_ENABLED)
+
+#if defined(M2_GET_SIM_SMS_STORAGE_ENABLED)
+
+/**
+ * RIL_REQUEST_GET_SIM_SMS_STORAGE
+ *
+ * Get the current memory storage information of SMS message in SIM card.
+ *
+ * "data" is NULL
+ *
+ * "response" is const int *
+ * ((const int *)response)[0] is current stored SIM SMS number
+ * ((const int *)response)[1] is total SIM SMS number
+ *
+ * Valid errors:
+ * SUCCESS, on success
+ * RADIO_NOT_AVAILABLE (radio resetting)
+ * GENERIC_FAILURE, if an error occurred
+ */
+#define RIL_REQUEST_GET_SIM_SMS_STORAGE 122
+
+#endif // M2_GET_SIM_SMS_STORAGE_ENABLED
+
 /***********************************************************************/
 
 
@@ -3972,6 +4164,41 @@ typedef struct {
  */
 #define RIL_UNSOL_CELL_INFO_LIST 1036
 
+/*
+ * RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED
+ *
+ * Called when IMS registration state has changed
+ *
+ * "data" is int *
+ * ((int *)response)[0] is registration state:
+ *              0 - Not registered
+ *              1 - Registered
+ * ((int *)response)[1] is bitmap of the services supported:
+ *          & 0x1 - SMS supported
+ *
+ * If IMS is registered and supports SMS, then ((int *) response)[2]
+ * must follow with IMS SMS format:
+ *
+ * ((int *) response)[2] is of type const RIL_IMS_SMS_Format
+ */
+#define RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED 1037
+
+#if defined(M2_CALL_FAILED_CAUSE_FEATURE_ENABLED)
+
+/**
+ * RIL_UNSOL_CALL_FAILED_CAUSE
+ *
+ * Call failed cause report.
+ *
+ * "data" is int *
+ * ((int *)data)[0] is call id
+ * ((int *)data)[1] is failed cause, refer to TS 24.008 Table 10.5.123
+ */
+#define RIL_UNSOL_CALL_FAILED_CAUSE 1038
+
+
+#endif // (M2_CALL_FAILED_CAUSE_FEATURE_ENABLED)
+
 /***********************************************************************/
 
 
@@ -4040,6 +4267,14 @@ typedef struct {
     RIL_GetVersion getVersion;
 } RIL_RadioFunctions;
 
+typedef struct {
+    char *apn;
+    char *protocol;
+    int authtype;
+    char *username;
+    char *password;
+} RIL_InitialAttachApn;
+
 #ifdef RIL_SHLIB
 struct RIL_Env {
     /**
@@ -4100,6 +4335,7 @@ const RIL_RadioFunctions *RIL_Init(const struct RIL_Env *env, int argc, char **a
  */
 void RIL_register (const RIL_RadioFunctions *callbacks);
 
+char gs_rilSocketName[RIL_SOCKET_NAME_MAX_LENGTH];
 
 /**
  *
