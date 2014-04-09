@@ -1766,7 +1766,9 @@ typedef struct {
  * ((const char **)data)[6] is the connection type to request must be one of the
  *                          PDP_type values in TS 27.007 section 10.1.1.
  *                          For example, "IP", "IPV6", "IPV4V6", or "PPP".
- * ((const char **)data)[7] Optional connection property parameters, format to be defined.
+ * ((const char **)data)[7] indicates the type of PDP context activation request
+ *                          0 => PDP context is for new PDP
+ *                          1 => PDP context is for handover from a non-3GPP NW
  *
  * "response" is a RIL_Data_Call_Response_v6
  *
