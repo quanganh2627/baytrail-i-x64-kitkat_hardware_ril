@@ -2256,13 +2256,23 @@ static int responseRilSignalStrength(Parcel &p,
             p.writeInt32(INT_MAX);
         }
 
+        if (responselen >= sizeof (RIL_SignalStrength_v9)) {
+            RIL_SignalStrength_v9 *p_cur_v9 = ((RIL_SignalStrength_v9 *) response);
+            p.writeInt32(p_cur_v9->WCDMA_SignalStrength.rscp);
+            p.writeInt32(p_cur_v9->WCDMA_SignalStrength.ecNo);
+        } else {
+            p.writeInt32(255);
+            p.writeInt32(255);
+        }
+
         startResponse;
         appendPrintBuf("%s[signalStrength=%d,bitErrorRate=%d,\
                 CDMA_SS.dbm=%d,CDMA_SSecio=%d,\
                 EVDO_SS.dbm=%d,EVDO_SS.ecio=%d,\
                 EVDO_SS.signalNoiseRatio=%d,\
                 LTE_SS.signalStrength=%d,LTE_SS.rsrp=%d,LTE_SS.rsrq=%d,\
-                LTE_SS.rssnr=%d,LTE_SS.cqi=%d]",
+                LTE_SS.rssnr=%d,LTE_SS.cqi=%d,\
+                WCDMA_SS.rscp=%d,WCDMA_SS.ecNo=%d]",
                 printBuf,
                 p_cur->GW_SignalStrength.signalStrength,
                 p_cur->GW_SignalStrength.bitErrorRate,
@@ -2275,7 +2285,9 @@ static int responseRilSignalStrength(Parcel &p,
                 p_cur->LTE_SignalStrength.rsrp,
                 p_cur->LTE_SignalStrength.rsrq,
                 p_cur->LTE_SignalStrength.rssnr,
-                p_cur->LTE_SignalStrength.cqi);
+                p_cur->LTE_SignalStrength.cqi,
+                p_cur->WCDMA_SignalStrength.rscp,
+                p_cur->WCDMA_SignalStrength.ecNo);
         closeResponse;
 
     } else {

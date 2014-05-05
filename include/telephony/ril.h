@@ -700,6 +700,15 @@ typedef struct {
 } RIL_SignalStrengthWcdma;
 
 typedef struct {
+    int rscp;   /* Valid values are (0-96, 255) as defined in TS 27.007 8.69. Received signal
+                 * code power.
+                 */
+    int ecNo;   /* Valid values are (0-49, 255) as defined in TS 27.007 8.69. Ratio of the received
+                 * energy per PN chip to the total received power spectral density.
+                 */
+} RIL_WCDMA_SignalStrength;
+
+typedef struct {
     int dbm;  /* Valid values are positive integers.  This value is the actual RSSI value
                * multiplied by -1.  Example: If the actual RSSI is -75, then this response
                * value will be 75.
@@ -789,6 +798,14 @@ typedef struct {
     RIL_EVDO_SignalStrength     EVDO_SignalStrength;
     RIL_LTE_SignalStrength_v8   LTE_SignalStrength;
 } RIL_SignalStrength_v8;
+
+typedef struct {
+    RIL_GW_SignalStrength       GW_SignalStrength;
+    RIL_CDMA_SignalStrength     CDMA_SignalStrength;
+    RIL_EVDO_SignalStrength     EVDO_SignalStrength;
+    RIL_LTE_SignalStrength      LTE_SignalStrength;
+    RIL_WCDMA_SignalStrength    WCDMA_SignalStrength;
+} RIL_SignalStrength_v9;
 
 /** RIL_CellIdentityGsm */
 typedef struct {
