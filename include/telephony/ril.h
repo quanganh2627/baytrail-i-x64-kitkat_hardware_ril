@@ -51,7 +51,7 @@ extern "C" {
 
 #define CDMA_ALPHA_INFO_BUFFER_LENGTH 64
 #define CDMA_NUMBER_INFO_BUFFER_LENGTH 81
-
+#define RILD_SOCKET_NAME_MAX_LENGTH 10
 #define MAX_RILDS 3
 #define MAX_SOCKET_NAME_LENGTH 6
 #define MAX_CLIENT_ID_LENGTH 2
@@ -4731,6 +4731,7 @@ typedef const char * (*RIL_GetVersion) (void);
 
 typedef struct {
     int version;        /* set to RIL_VERSION */
+    char *sockName;
     RIL_RequestFunc onRequest;
     RIL_RadioStateRequest onStateRequest;
     RIL_Supports supports;

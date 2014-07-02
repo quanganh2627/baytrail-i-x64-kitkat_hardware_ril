@@ -169,7 +169,7 @@ extern "C"
 char rild[MAX_SOCKET_NAME_LENGTH] = SOCKET_NAME_RIL;
 /*******************************************************************/
 
-RIL_RadioFunctions s_callbacks = {0, NULL, NULL, NULL, NULL, NULL};
+RIL_RadioFunctions s_callbacks = {0, NULL, NULL, NULL, NULL, NULL, NULL};
 static int s_registerCalled = 0;
 
 static pthread_t s_tid_dispatch;
