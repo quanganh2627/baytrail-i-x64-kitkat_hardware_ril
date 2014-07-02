@@ -146,7 +146,7 @@ typedef struct UserCallbackInfo {
 
 /*******************************************************************/
 
-RIL_RadioFunctions s_callbacks = {0, NULL, NULL, NULL, NULL, NULL};
+RIL_RadioFunctions s_callbacks = {0, NULL, NULL, NULL, NULL, NULL, NULL};
 static int s_registerCalled = 0;
 
 static pthread_t s_tid_dispatch;
@@ -3197,9 +3197,16 @@ RIL_register (const RIL_RadioFunctions *callbacks) {
     s_fdListen = ret;
 
 #else
-    s_fdListen = android_get_control_socket(SOCKET_NAME_RIL);
+    if (callbacks->sockName != NULL) {
+        s_fdListen = android_get_control_socket(callbacks->sockName);
+    }
+    else{
+        s_fdListen = android_get_control_socket(SOCKET_NAME_RIL);
+    }
+
     if (s_fdListen < 0) {
-        RLOGE("Failed to get socket '" SOCKET_NAME_RIL "'");
+        //RLOGE("Failed to get socket '" SOCKET_NAME_RIL "'");
+        RLOGE("Failed to get socket = %s\n", callbacks->sockName);
         exit(-1);
     }
 
@@ -3218,6 +3225,12 @@ RIL_register (const RIL_RadioFunctions *callbacks) {
                 listenCallback, NULL);
 
     rilEventAddWakeup (&s_listen_event);
+
+    if ((callbacks->sockName != NULL) &&
+        (strncmp(callbacks->sockName, "rild2", 5) == 0)) {
+        RLOGI("!default socket\n");
+        return;
+    }
 
 #if 1
     // start debug interface socket

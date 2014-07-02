@@ -33,7 +33,7 @@ extern "C" {
 
 #define CDMA_ALPHA_INFO_BUFFER_LENGTH 64
 #define CDMA_NUMBER_INFO_BUFFER_LENGTH 81
-
+#define RILD_SOCKET_NAME_MAX_LENGTH 10
 typedef void * RIL_Token;
 
 typedef enum {
@@ -4134,6 +4134,7 @@ typedef const char * (*RIL_GetVersion) (void);
 
 typedef struct {
     int version;        /* set to RIL_VERSION */
+    char *sockName;
     RIL_RequestFunc onRequest;
     RIL_RadioStateRequest onStateRequest;
     RIL_Supports supports;

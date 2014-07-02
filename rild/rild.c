@@ -106,13 +106,21 @@ int main(int argc, char **argv)
     const RIL_RadioFunctions *funcs;
     char libPath[PROPERTY_VALUE_MAX];
     unsigned char hasLibArgs = 0;
+    char sockName[RILD_SOCKET_NAME_MAX_LENGTH] = {'\0'};
 
     int i;
 
+    memset(sockName, '\0', RILD_SOCKET_NAME_MAX_LENGTH);
+    strncpy(sockName, "rild", RILD_SOCKET_NAME_MAX_LENGTH - 1);
     umask(S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH);
     for (i = 1; i < argc ;) {
         if (0 == strcmp(argv[i], "-l") && (argc - i > 1)) {
             rilLibPath = argv[i + 1];
+            i += 2;
+        } else if (0 == strcmp(argv[i], "-s")) {
+            ALOGD("socket = %s", argv[i + 1]);
+            memset(sockName, '\0', RILD_SOCKET_NAME_MAX_LENGTH);
+            strncpy(sockName, argv[i + 1], RILD_SOCKET_NAME_MAX_LENGTH - 1);
             i += 2;
         } else if (0 == strcmp(argv[i], "--")) {
             i++;
@@ -270,10 +278,12 @@ OpenLib:
     }
 
     // Make sure there's a reasonable argv[0]
-    rilArgv[0] = argv[0];
+    //rilArgv[0] = argv[0];
 
     funcs = rilInit(&s_rilEnv, argc, rilArgv);
-
+    if ((funcs->sockName != NULL) && (sockName[0] != '\0')) {
+        strncpy(funcs->sockName, sockName, RILD_SOCKET_NAME_MAX_LENGTH - 1);
+    }
     RIL_register(funcs);
 
 done:
