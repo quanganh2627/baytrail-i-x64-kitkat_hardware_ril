@@ -709,7 +709,8 @@ typedef enum {
     RIL_APPSTATE_PUK                   = 3, /* If PUK1 or Puk for UPin is required */
     RIL_APPSTATE_SUBSCRIPTION_PERSO    = 4, /* perso_substate should be look at
                                                when app_state is assigned to this value */
-    RIL_APPSTATE_READY                 = 5
+    RIL_APPSTATE_READY                 = 5,
+	RIL_APPSTATE_IMEI                  = 6  /* If SIM IMEI locked */
 } RIL_AppState;
 
 typedef enum {
@@ -871,10 +872,38 @@ typedef struct {
 } RIL_GW_SignalStrength;
 
 typedef struct {
+    int signalStrength; /* Valid values are (0-31, 99) as defined in TS 27.007 8.5 */
+    int bitErrorRate; /* bit error rate (0-7, 99) as defined in TS 27.007 8.5 */
+    int rxLev; /* Valid values are (0-63, 99) as defined in TS 27.007 8.69 */
+    int timingAdvance; /* Timing Advance, INT_MAX if unknown */
+} RIL_GW_SignalStrength_v2;
+typedef struct {	
+	int rxlev;           /* Valid values are (0-63, 99) as defined in TS 27.007 8.69 */
+} RIL_GSM_SignalStrength;
+
+typedef struct {
     int signalStrength;  /* Valid values are (0-31, 99) as defined in TS 27.007 8.5 */
     int bitErrorRate;    /* bit error rate (0-7, 99) as defined in TS 27.007 8.5 */
 } RIL_SignalStrengthWcdma;
 
+typedef struct {
+    int signalStrength; /* Valid values are (0-31, 99) as defined in TS 27.007 8.5 */
+    int bitErrorRate; /* bit error rate (0-7, 99) as defined in TS 27.007 8.5 */
+    int rscp; /* Received signal code power, Valid values are (0-96, 255) as defined in
+               * 3GPPTS 27.007 8.69.
+               */
+    int ecNo; /* Valid values are (0-49, 255) as defined in TS 27.007 8.69. Ratio of the received
+               * energy per PN chip to the total received power spectral density.
+               */
+} RIL_SignalStrengthWcdma_v2;
+typedef struct {
+    int rscp;   /* Valid values are (0-96, 255) as defined in TS 27.007 8.69. Received signal
+                 * code power.
+                 */
+    int ecNo;   /* Valid values are (0-49, 255) as defined in TS 27.007 8.69. Ratio of the received
+                 * energy per PN chip to the total received power spectral density.
+                 */
+} RIL_WCDMA_SignalStrength;
 typedef struct {
     int dbm;  /* Valid values are positive integers.  This value is the actual RSSI value
                * multiplied by -1.  Example: If the actual RSSI is -75, then this response
@@ -981,6 +1010,16 @@ typedef struct {
     RIL_TD_SCDMA_SignalStrength TD_SCDMA_SignalStrength;
 } RIL_SignalStrength_v10;
 
+typedef struct {
+    RIL_GW_SignalStrength       GW_SignalStrength;
+    RIL_CDMA_SignalStrength     CDMA_SignalStrength;
+    RIL_EVDO_SignalStrength     EVDO_SignalStrength;
+    RIL_LTE_SignalStrength_v8   LTE_SignalStrength;
+    RIL_TD_SCDMA_SignalStrength TD_SCDMA_SignalStrength;
+    RIL_WCDMA_SignalStrength    WCDMA_SignalStrength;
+    RIL_GSM_SignalStrength      GSM_SignalStrength;
+} RIL_SignalStrength_v11;
+
 /** RIL_CellIdentityGsm */
 typedef struct {
     int mcc;    /* 3-digit Mobile Country Code, 0..999, INT_MAX if unknown */
@@ -989,6 +1028,15 @@ typedef struct {
     int cid;    /* 16-bit GSM Cell Identity described in TS 27.007, 0..65535, INT_MAX if unknown  */
 } RIL_CellIdentityGsm;
 
+/** RIL_CellIdentityGsm_v2 */
+typedef struct {
+    int mcc; /* 3-digit Mobile Country Code, 0..999, INT_MAX if unknown */
+    int mnc; /* 2 or 3-digit Mobile Network Code, 0..999, INT_MAX if unknown */
+    int lac; /* 16-bit Location Area Code, 0..65535, INT_MAX if unknown */
+    int cid; /* 16-bit GSM Cell Identity described in TS 27.007, 0..65535, INT_MAX if unknown */
+    int basestationId; /* Base station identification code, INT_MAX if unknown */
+    int arfcn; /* 16-bit Absolute Radio Frequency Channel Number, INT_MAX if unknown */
+} RIL_CellIdentityGsm_v2;
 /** RIL_CellIdentityWcdma */
 typedef struct {
     int mcc;    /* 3-digit Mobile Country Code, 0..999, INT_MAX if unknown  */
@@ -997,6 +1045,20 @@ typedef struct {
     int cid;    /* 28-bit UMTS Cell Identity described in TS 25.331, 0..268435455, INT_MAX if unknown  */
     int psc;    /* 9-bit UMTS Primary Scrambling Code described in TS 25.331, 0..511, INT_MAX if unknown */
 } RIL_CellIdentityWcdma;
+
+/** RIL_CellIdentityWcdma_v2 */
+typedef struct {
+    int mcc; /* 3-digit Mobile Country Code, 0..999, INT_MAX if unknown */
+    int mnc; /* 2 or 3-digit Mobile Network Code, 0..999, INT_MAX if unknown */
+    int lac; /* 16-bit Location Area Code, 0..65535, INT_MAX if unknown */
+    int cid; /* 28-bit UMTS Cell Identity described in TS 25.331, 0..268435455,
+              * INT_MAX if unknown */
+    int psc; /* 9-bit UMTS Primary Scrambling Code described in TS 25.331, 0..511,
+              * INT_MAX if unknown */
+    int dluarfcn; /* Downlink UTRA Absolute Radio Frequency Channel Number, INT_MAX if unknown */
+    int uluarfcn; /* Uplink UTRA Absolute Radio Frequency Channel Number, INT_MAX if unknown */
+    int pathloss; /* Pathloss described in TS 25.331 sec 10.3.7.3, 46..158, INT_MAX if unknown */
+} RIL_CellIdentityWcdma_v2;
 
 /** RIL_CellIdentityCdma */
 typedef struct {
@@ -1032,17 +1094,41 @@ typedef struct {
     int cpid;    /* 8-bit Cell Parameters ID described in TS 25.331, 0..127, INT_MAX if unknown */
 } RIL_CellIdentityTdscdma;
 
+/** RIL_CellIdentityLte_v2 */
+typedef struct {
+    int mcc; /* 3-digit Mobile Country Code, 0..999, INT_MAX if unknown */
+    int mnc; /* 2 or 3-digit Mobile Network Code, 0..999, INT_MAX if unknown */
+    int ci; /* 28-bit Cell Identity described in TS ???, INT_MAX if unknown */
+    int pci; /* physical cell id 0..503, INT_MAX if unknown */
+    int tac; /* 16-bit tracking area code, INT_MAX if unknown */
+    int dlearfcn; /* Downlink UTRA Absolute Radio Frequency Channel Number, INT_MAX if unknown */
+    int ulearfcn; /* Uplink UTRA Absolute Radio Frequency Channel Number, INT_MAX if unknown */
+    int pathloss; /* Pathloss described in TS 36.213 sec 5.1.1.1, 0..2400, INT_MAX if unknown */
+} RIL_CellIdentityLte_v2;
+
 /** RIL_CellInfoGsm */
 typedef struct {
   RIL_CellIdentityGsm   cellIdentityGsm;
   RIL_GW_SignalStrength signalStrengthGsm;
 } RIL_CellInfoGsm;
 
+/** RIL_CellInfoGsm_v2 */
+typedef struct {
+  RIL_CellIdentityGsm_v2 cellIdentityGsm;
+  RIL_GW_SignalStrength_v2 signalStrengthGsm;
+} RIL_CellInfoGsm_v2;
+
 /** RIL_CellInfoWcdma */
 typedef struct {
   RIL_CellIdentityWcdma cellIdentityWcdma;
   RIL_SignalStrengthWcdma signalStrengthWcdma;
 } RIL_CellInfoWcdma;
+
+/** RIL_CellInfoWcdma_v2 */
+typedef struct {
+  RIL_CellIdentityWcdma_v2 cellIdentityWcdma;
+  RIL_SignalStrengthWcdma_v2 signalStrengthWcdma;
+} RIL_CellInfoWcdma_v2;
 
 /** RIL_CellInfoCdma */
 typedef struct {
@@ -1063,13 +1149,24 @@ typedef struct {
   RIL_TD_SCDMA_SignalStrength signalStrengthTdscdma;
 } RIL_CellInfoTdscdma;
 
+/** RIL_CellInfoLte_v2 */
+typedef struct {
+  RIL_CellIdentityLte_v2 cellIdentityLte;
+  RIL_LTE_SignalStrength_v8  signalStrengthLte;
+} RIL_CellInfoLte_v2;
+
 // Must be the same as CellInfo.TYPE_XXX
 typedef enum {
-  RIL_CELL_INFO_TYPE_GSM    = 1,
-  RIL_CELL_INFO_TYPE_CDMA   = 2,
-  RIL_CELL_INFO_TYPE_LTE    = 3,
-  RIL_CELL_INFO_TYPE_WCDMA  = 4,
-  RIL_CELL_INFO_TYPE_TD_SCDMA  = 5
+  RIL_CELL_INFO_TYPE_GSM       = 1,
+  RIL_CELL_INFO_TYPE_CDMA      = 2,
+  RIL_CELL_INFO_TYPE_LTE       = 3,
+  RIL_CELL_INFO_TYPE_WCDMA     = 4,
+  RIL_CELL_INFO_TYPE_TD_SCDMA  = 5,
+  RIL_CELL_INFO_TYPE_GSM_V2    = 11,
+  RIL_CELL_INFO_TYPE_CDMA_V2   = 12,
+  RIL_CELL_INFO_TYPE_LTE_V2    = 13,
+  RIL_CELL_INFO_TYPE_WCDMA_V2  = 14,
+  RIL_CELL_INFO_TYPE_TD_SCDMA_V2 = 15,
 } RIL_CellInfoType;
 
 // Must be the same as CellInfo.TIMESTAMP_TYPE_XXX
@@ -1094,6 +1191,20 @@ typedef struct {
     RIL_CellInfoTdscdma tdscdma;
   } CellInfo;
 } RIL_CellInfo;
+
+typedef struct {
+  RIL_CellInfoType  cellInfoType;   /* cell type for selecting from union CellInfo */
+  int               registered;     /* !0 if this cell is registered 0 if not registered */
+  RIL_TimeStampType timeStampType;  /* type of time stamp represented by timeStamp */
+  uint64_t          timeStamp;      /* Time in nanos as returned by ril_nano_time */
+  union {
+    RIL_CellInfoGsm_v2   gsm;
+    RIL_CellInfoCdma     cdma;
+    RIL_CellInfoLte_v2   lte;
+    RIL_CellInfoWcdma_v2 wcdma;
+    RIL_CellInfoTdscdma  tdscdma;
+  } CellInfo;
+} RIL_CellInfo_v2;
 
 /* Names of the CDMA info records (C.S0005 section 3.7.5) */
 typedef enum {
