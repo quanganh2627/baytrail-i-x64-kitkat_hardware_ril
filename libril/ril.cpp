@@ -3430,6 +3430,7 @@ static int responseCellInfoList_legacy(Parcel &p, void *response, size_t respons
     return 0;
 }
 
+#if !defined(USE_PATCHED_AOSP)
 static int responseCellInfoList(Parcel &p, void *response, size_t responselen)
 {
     if (response == NULL && responselen != 0) {
@@ -3578,7 +3579,54 @@ static int responseCellInfoList(Parcel &p, void *response, size_t responselen)
 
     return 0;
 }
+#else
+static int responseCellInfoList(Parcel &p, void *response, size_t responselen)
+{
+    if (response == NULL && responselen != 0) {
+        RLOGE("invalid response: NULL");
+        return RIL_ERRNO_INVALID_RESPONSE;
+    }
 
+    if (response == NULL) {
+        p.writeInt32(0);
+
+        startResponse;
+        closeResponse;
+
+        return 0;
+    } else {
+        /* Check size before casting pointer to RIL_CellInfo type */
+        if (responselen < MIN(sizeof(RIL_CellInfo), sizeof(RIL_CellInfo_v2))) {
+            RLOGE("invalid response length %zu, expecting at least %zu",
+                    responselen, MIN(sizeof(RIL_CellInfo), sizeof(RIL_CellInfo_v2)));
+            return RIL_ERRNO_INVALID_RESPONSE;
+        }
+
+        /* 'type' field is common to normal and _v2 structure types */
+        RIL_CellInfoType type = ((RIL_CellInfo *) response)->cellInfoType;
+
+        switch(type) {
+            case RIL_CELL_INFO_TYPE_GSM:
+            case RIL_CELL_INFO_TYPE_CDMA:
+            case RIL_CELL_INFO_TYPE_LTE:
+            case RIL_CELL_INFO_TYPE_WCDMA:
+            case RIL_CELL_INFO_TYPE_TD_SCDMA:
+                return responseCellInfoList_legacy(p, response, responselen);
+
+            case RIL_CELL_INFO_TYPE_GSM_V2:
+            case RIL_CELL_INFO_TYPE_CDMA_V2:
+            case RIL_CELL_INFO_TYPE_LTE_V2:
+            case RIL_CELL_INFO_TYPE_WCDMA_V2:
+            case RIL_CELL_INFO_TYPE_TD_SCDMA_V2:
+                return responseCellInfoList_v2(p, response, responselen);
+
+            default:
+                RLOGE("invalid type %d for first entry", type);
+                return RIL_ERRNO_INVALID_RESPONSE;
+        }
+    }
+}
+#endif
 static int responseHardwareConfig(Parcel &p, void *response, size_t responselen)
 {
    if (response == NULL && responselen != 0) {

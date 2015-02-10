@@ -31,6 +31,7 @@
 extern "C" {
 #endif
 
+#define USE_PATCHED_AOSP
 
 #if defined(ANDROID_SIM_COUNT_2)
 #define SIM_COUNT 2
@@ -4048,7 +4049,11 @@ typedef struct {
  *
  * "data" is NULL
  *
- * "response" is an array of  RIL_CellInfo.
+ * "response" is an array of RIL_CellInfo or RIL_CellInfo_v2.
+ *            - In case of RIL_CellInfo, all cellInfoType fields must be
+ *              GSM, CDMA, LTE or WCDMA or TD_SCDMA
+ *            - In case of RIL_CellInfo_v2, all cellInfoType fields must be
+ *              GSM_v2, CDMA_v2, LTE_v2 or WCDMA_v2 or TD_SCDMA_v2
  */
 #define RIL_REQUEST_GET_CELL_INFO_LIST 109
 
@@ -4944,7 +4949,11 @@ typedef struct {
  *
  * "data" is NULL
  *
- * "response" is an array of RIL_CellInfo.
+ * "response" is an array of RIL_CellInfo or RIL_CellInfo_v2.
+ *            - In case of RIL_CellInfo, all cellInfoType fields must be
+ *              GSM, CDMA, LTE or WCDMA or TDSCDMA
+ *            - In case of RIL_CellInfo_v2, all cellInfoType fields must be
+ *              GSM_v2, CDMA_v2, LTE_v2 or WCDMA_v2 or TD_SCDMA_v2
  */
 #define RIL_UNSOL_CELL_INFO_LIST 1036
 
